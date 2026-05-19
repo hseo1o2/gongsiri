@@ -21,12 +21,8 @@ venv/
 # OS
 .DS_Store
 
-# Cache
-data/price_cache/
-
-# Large / generated outputs
-data/normalized_data_bundle.json
-data/reports/
+# Runtime cache / generated outputs (A's collector recreates the dir on demand)
+data/
 *.log
 
 # Node / Next.js

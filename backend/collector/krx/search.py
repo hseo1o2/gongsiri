@@ -6,12 +6,11 @@ import requests
 
 from backend.schemas.bundle import CompanyInfo
 
-
 K_SKILL_SEARCH_URL = "https://k-skill-proxy.nomadamas.org/v1/korean-stock/search"
 DEFAULT_BAS_DD = "20250516"
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-STOCK_MASTER_PATH = PROJECT_ROOT / "data" / "stock_master.json"
+STOCK_MASTER_PATH = PROJECT_ROOT / "assets" / "stock_master.json"
 
 
 DEFAULT_LOCAL_STOCKS: dict[str, dict[str, str]] = {
@@ -41,7 +40,7 @@ SEARCH_CACHE: dict[str, CompanyInfo] = {}
 
 def ensure_stock_master_file() -> None:
     """
-    data/stock_master.json이 없으면 기본 종목 DB로 생성한다.
+    assets/stock_master.json이 없으면 기본 종목 DB로 생성한다.
     """
     STOCK_MASTER_PATH.parent.mkdir(parents=True, exist_ok=True)
 
@@ -115,17 +114,11 @@ def parse_kskill_item(item: dict[str, Any], fallback_name: str) -> CompanyInfo:
     )
 
     stock_code = (
-        item.get("stock_code")
-        or item.get("srtnCd")
-        or item.get("isuSrtCd")
-        or item.get("code")
+        item.get("stock_code") or item.get("srtnCd") or item.get("isuSrtCd") or item.get("code")
     )
 
     market = (
-        item.get("market")
-        or item.get("mrktCtg")
-        or item.get("market_name")
-        or item.get("mktNm")
+        item.get("market") or item.get("mrktCtg") or item.get("market_name") or item.get("mktNm")
     )
 
     corp_code = item.get("corp_code") or item.get("corpCode")
@@ -160,13 +153,7 @@ def search_stock_from_kskill(keyword: str, bas_dd: str = DEFAULT_BAS_DD) -> Comp
     response.raise_for_status()
     data = response.json()
 
-    items = (
-        data.get("items")
-        or data.get("data")
-        or data.get("results")
-        or data.get("stocks")
-        or []
-    )
+    items = data.get("items") or data.get("data") or data.get("results") or data.get("stocks") or []
 
     if isinstance(items, dict):
         items = [items]
@@ -199,7 +186,7 @@ def search_stock(keyword: str) -> CompanyInfo:
 
     안정화 전략:
     1. 메모리 캐시
-    2. data/stock_master.json
+    2. assets/stock_master.json
     3. k-skill API
     4. 성공 시 stock_master.json에 저장
     """

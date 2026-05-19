@@ -7,29 +7,20 @@
 
 ```
 gongsiri/
-├── frontend/                      # Next.js (C 담당) — 아직 .gitkeep + README
-├── backend/                       # FastAPI
-│   ├── collector/                 # A: dart.py, dart_parser.py, document_parse.py,
-│   │                              #    normalize.py, krx/{client,search,trade_info}.py,
-│   │                              #    naver/news.py
-│   ├── schemas/bundle.py          # A↔B 공유 Pydantic
-│   ├── analyzer/                  # B (예정)
-│   ├── api/, agent/, db/          # C (예정)
-│   └── main.py                    # FastAPI 부트
-├── assets/                        # 기획서 PDF · 디자인 토큰 (C 담당)
-├── data/                          # 런타임 캐시·정적 데이터 (price_cache는 .gitignore)
-├── docs/                          # 01~05 설계 문서 (코드 전 필독)
-├── scripts/                       # setup-branch-protection.sh 등 운영 스크립트
-├── .claude/                       # 팀 공유 Claude Code 설정 (commit 추적 대상)
-│   ├── settings.json              # PreToolUse hook + permissions.ask (rm -rf 등)
-│   ├── hooks/guard-protected-branch.sh   # main/dev에서 commit/push/merge 차단
-│   └── skills/commit/SKILL.md     # /commit — Conventional Commit 7 types
-├── lefthook.yml                   # pre-commit 변경파일 lint + pre-push 보호브랜치 차단
-├── pyproject.toml                 # ruff 설정 (line=100, target=py311)
-├── .gitignore                     # .omc/ .omx/ node_modules/ .next/ .env 등 제외
+├── frontend/                 # Next.js 14 App Router (C 담당)
+├── backend/                  # FastAPI 단일 서비스 (api/agent/db = C, collector = A, analyzer = B, schemas = 공유)
+├── assets/                   # 정적 자산 — 기획서 PDF, 디자인 토큰, stock_master.json, dart_debug_main.html
+├── docs/                     # 설계 문서 (01~05) — 코드 작성 전 필독
+├── scripts/                  # 운영 스크립트 (setup-branch-protection.sh 등)
+├── .claude/                  # 팀 공유 Claude Code 설정 (hooks, /commit skill)
+├── lefthook.yml              # pre-commit 변경파일 lint + pre-push 보호브랜치 차단
+├── pyproject.toml            # ruff 설정
 ├── .env.example
-├── AGENTS.md / CLAUDE.md / README.md
+├── .gitignore                # data/ 등 런타임 캐시·.omc/·.omx/·node_modules 제외
+└── AGENTS.md / CLAUDE.md / README.md
 ```
+
+> 런타임 데이터는 `.gitignore`된 `data/`에 A의 collector가 자동 생성.
 
 ## 사람 담당 (A / B / C)
 
