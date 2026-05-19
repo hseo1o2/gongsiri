@@ -1,6 +1,23 @@
-venv/
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+
+# Virtual environment
+venv/
+
+# Environment variables
 .env
+
+# VSCode
+.vscode/
+
+# OS
+.DS_Store
+
+# Cache
+data/price_cache/
+
+# Large / generated outputs
 data/normalized_data_bundle.json
 data/reports/
+*.log
