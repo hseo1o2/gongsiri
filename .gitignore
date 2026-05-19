@@ -1,15 +1,22 @@
 # Python
 __pycache__/
 *.py[cod]
+*.pyc
+.ruff_cache/
+.pytest_cache/
 
 # Virtual environment
 venv/
+.venv/
 
 # Environment variables
 .env
+.env.local
+.env.*.local
 
-# VSCode
+# Editors / IDE
 .vscode/
+.idea/
 
 # OS
 .DS_Store
@@ -21,3 +28,19 @@ data/price_cache/
 data/normalized_data_bundle.json
 data/reports/
 *.log
+
+# Node / Next.js
+node_modules/
+.next/
+dist/
+build/
+coverage/
+
+# Tooling — local override (do not commit)
+lefthook-local.yml
+
+# Agent / Orchestrator state (kept local, not shared)
+.omc/
+.omx/
+
+# NOTE: .claude/ IS committed — it holds the team's shared Claude Code hooks and skills.

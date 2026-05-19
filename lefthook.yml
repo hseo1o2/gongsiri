@@ -1,0 +1,34 @@
+# lefthook - gongsiri git hooks.
+# Install once after clone: lefthook install
+# Bypass (emergency only):  git commit --no-verify  /  git push --no-verify
+
+pre-commit:
+  parallel: true
+  commands:
+    py-lint:
+      glob: "*.py"
+      run: ruff check --fix {staged_files} && ruff format {staged_files}
+      stage_fixed: true
+    js-lint:
+      glob: "*.{js,jsx,mjs,cjs,ts,tsx}"
+      run: |
+        if [ -f frontend/package.json ] && [ -d frontend/node_modules ]; then
+          cd frontend && pnpm exec eslint --fix {staged_files}
+        else
+          echo "lefthook: eslint skipped (frontend not initialized)"
+        fi
+      stage_fixed: true
+
+pre-push:
+  commands:
+    block-protected-branch:
+      run: |
+        branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+        case "$branch" in
+          main|dev)
+            echo "[lefthook] BLOCKED: push from protected branch '$branch'." >&2
+            echo "  Rule: gongsiri convention forbids direct push to main/dev." >&2
+            echo "  Action: branch off as feature/<owner>-<scope> and open a PR." >&2
+            exit 1
+            ;;
+        esac

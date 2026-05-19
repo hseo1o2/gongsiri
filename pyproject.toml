@@ -1,0 +1,23 @@
+# gongsiri — root pyproject.toml.
+# Backend Python deps go under backend/pyproject.toml (uv project).
+# This root file exists only to host shared tooling (ruff) used by lefthook
+# so the lint config is consistent across whatever subdirectory edits land.
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = [
+    ".git",
+    ".omc",
+    ".ruff_cache",
+    "node_modules",
+    ".next",
+    "dist",
+    "build",
+    "data/price_cache",
+    "data/reports",
+]
+
+[tool.ruff.lint]
+# Conservative default — keep CI light. Tighten per-PR as the codebase grows.
+select = ["E", "F", "W", "I"]
