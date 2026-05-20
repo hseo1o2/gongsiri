@@ -48,6 +48,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh pr edit ${{ github.event.pull_request.number }} --add-label "size/large"
+          # 경고 전용 — 라벨이 미생성이거나 권한 문제로 실패해도 job 은 절대 막지 않는다.
+          gh pr edit ${{ github.event.pull_request.number }} --add-label "size/large" \
+            || echo "::warning::'size/large' 라벨을 달지 못했습니다 (라벨 미생성?). 경고는 코멘트로 대체합니다."
           gh pr comment ${{ github.event.pull_request.number }} \
-            --body "PR 크기 경고: 변경 파일 ${{ steps.size.outputs.files }}개, LOC ${{ steps.size.outputs.loc }}줄. 소프트 기준(20파일/400 LOC) 초과. 분할을 고려해 주세요. (블록 아님 — docs/rules/version-control.md §5)"
+            --body "PR 크기 경고: 변경 파일 ${{ steps.size.outputs.files }}개, LOC ${{ steps.size.outputs.loc }}줄. 소프트 기준(20파일/400 LOC) 초과. 분할을 고려해 주세요. (블록 아님 — docs/rules/version-control.md §5)" \
+            || echo "::warning::크기 경고 코멘트 작성에 실패했습니다."
