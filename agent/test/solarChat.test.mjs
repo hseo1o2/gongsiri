@@ -107,3 +107,40 @@ printf '%s\n' '{"ok":true,"traceId":"cli-solar-trace","contractVersion":"v1","ob
     cleanup();
   }
 });
+
+test("solar chat CLI can read credentials from a local env file", () => {
+  const dir = mkdtempSync(join(tmpdir(), "gongsiri-solar-env-"));
+  const envFile = join(dir, ".env");
+  writeFileSync(envFile, "UPSTAGE_API_KEY=dummy-from-env-file\nUPSTAGE_MODEL=solar-pro3\n", "utf-8");
+  const { scriptPath, cleanup } = makeExecutable(
+    "python-success.sh",
+    `#!/bin/sh
+printf '%s\n' '{"ok":true,"traceId":"env-file-trace","contractVersion":"v1","observedAt":"2026-05-21T00:00:00Z","model":"solar-pro3","text":"SOLAR_LIVE_OK"}'
+`
+  );
+
+  try {
+    const result = spawnSync(
+      "node",
+      ["dist/cli/runSolarChat.js", "--prompt", "Reply exactly SOLAR_LIVE_OK", "--trace-id", "env-file-trace"],
+      {
+        cwd: process.cwd(),
+        encoding: "utf-8",
+        env: {
+          ...process.env,
+          GONGSIRI_ENV_FILE: envFile,
+          PYTHON_BIN: scriptPath,
+          UPSTAGE_API_KEY: ""
+        }
+      }
+    );
+
+    assert.equal(result.status, 0);
+    const parsed = JSON.parse(result.stdout.trim());
+    assert.equal(parsed.ok, true);
+    assert.equal(parsed.traceId, "env-file-trace");
+  } finally {
+    cleanup();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
