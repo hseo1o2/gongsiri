@@ -46,8 +46,7 @@ def parse_document_with_upstage(file_path: str) -> dict[str, Any]:
 
     if response.status_code >= 400:
         raise RuntimeError(
-            f"Upstage Document Parse API error: "
-            f"{response.status_code} / {response.text}"
+            f"Upstage Document Parse API error: {response.status_code} / {response.text}"
         )
 
     return response.json()
@@ -98,12 +97,7 @@ def extract_markdown_from_response(result: dict[str, Any]) -> str:
             if not isinstance(element, dict):
                 continue
 
-            content = (
-                element.get("content")
-                or element.get("text")
-                or element.get("html")
-                or ""
-            )
+            content = element.get("content") or element.get("text") or element.get("html") or ""
 
             if content:
                 chunks.append(str(content))

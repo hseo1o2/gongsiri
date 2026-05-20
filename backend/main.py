@@ -1,8 +1,8 @@
 from fastapi import FastAPI, HTTPException
 
 from backend.collector.normalize import (
-    build_normalized_bundle,
     build_and_save_normalized_bundle,
+    build_normalized_bundle,
 )
 
 app = FastAPI(title="Gongsiri A Data Pipeline")
