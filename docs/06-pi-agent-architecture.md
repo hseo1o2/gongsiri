@@ -1,0 +1,55 @@
+# 06. Pi Agent Architecture — PR1
+
+## Architecture Summary
+PR1 uses a thin Pi → Python subprocess architecture. Pi owns orchestration; Python owns disclosure-domain execution.
+
+## Component View
+### Pi runtime layer
+Planned home: `agent/`
+
+Responsibilities:
+- session lifecycle
+- prompt intake
+- skill selection
+- tool invocation
+- runtime request/response envelopes
+
+### Python bridge layer
+Current files:
+- `backend/collector/bridge/disclosures.py`
+- `backend/collector/cli/fetch_disclosures.py`
+- `backend/collector/company_resolver.py`
+
+Responsibilities:
+- validate request shape
+- resolve corp code in read-only mode when needed
+- call authoritative DART collector
+- map exceptions to typed bridge failures
+- emit JSON envelope on stdout
+
+### Domain execution layer
+Current files:
+- `backend/collector/dart.py`
+- `backend/collector/krx/search.py`
+- other `backend/collector/*` modules
+
+Responsibilities:
+- collect disclosure/news/market/doc data
+- maintain domain-specific logic
+- remain the source of truth for disclosure fetch behavior
+
+## Sequence
+1. Pi receives prompt.
+2. Agent chooses `disclosure-intake-skill`.
+3. Skill invokes `fetch_disclosures`.
+4. Tool spawns `python -m backend.collector.cli.fetch_disclosures`.
+5. Bridge resolves corp code if required.
+6. Bridge calls `backend.collector.dart.fetch_disclosures`.
+7. Bridge returns typed success/failure envelope.
+8. Pi packages the result into an `AgentResponse`.
+
+## Constraints
+- no HTTP delegation in PR1
+- no tracked asset mutation during runtime fetch
+- `backend/main.py` remains passive and separate from Pi hosting
+- observability requires `traceId`, `contractVersion`, `observedAt`, and evidence propagation
