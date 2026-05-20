@@ -1,4 +1,5 @@
 import type { ContractVersion } from "../contracts/request.js";
+import { loadLocalEnvFiles } from "../env/loadLocalEnv.js";
 
 export type SolarConfig = {
   apiKey: string | null;
@@ -30,3 +31,5 @@ export const createSessionContext = (
   pythonBin,
   solar: resolveSolarConfig()
 });
+
+loadLocalEnvFiles();

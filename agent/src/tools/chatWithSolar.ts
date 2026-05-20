@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 
 import type { SolarChatRequest, SolarChatResult, SolarChatFailure } from "../contracts/chat.js";
 import { SOLAR_CHAT_TOOL_NAME } from "../contracts/chat.js";
+import { loadLocalEnvFiles } from "../env/loadLocalEnv.js";
 
 type ExecFileLike = typeof execFile;
 
@@ -155,6 +156,7 @@ export const createSolarChatTool = (
     pythonCommand: "python3 -c <script>"
   },
   async invoke(request: SolarChatRequest): Promise<SolarChatResult> {
+    loadLocalEnvFiles();
     const env = {
       ...process.env,
       ...options.env,

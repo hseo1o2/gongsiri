@@ -57,3 +57,5 @@ declare module "node:url" {
   function fileURLToPath(url: string | URL): string;
   export { fileURLToPath };
 }
+
+declare module "node:path" {}
