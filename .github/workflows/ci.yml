@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [dev, main]
+
+jobs:
+  python-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: astral-sh/setup-uv@v4
+      - run: uv tool install ruff
+      - run: ruff check backend/
+      - run: ruff format --check backend/
+
+  js-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: corepack enable
+      - name: ESLint
+        run: |
+          if [ -f frontend/package.json ]; then
+            cd frontend && pnpm install && pnpm exec eslint .
+          else
+            echo "CI: eslint skipped (frontend not initialized)"
+          fi
+
+  js-typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: corepack enable
+      - name: TypeScript check
+        run: |
+          if [ -f frontend/package.json ]; then
+            cd frontend && pnpm install && pnpm exec tsc --noEmit
+          else
+            echo "CI: tsc skipped (frontend not initialized)"
+          fi
+
+  js-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: corepack enable
+      - name: Next.js build
+        run: |
+          if [ -f frontend/package.json ]; then
+            cd frontend && pnpm install && pnpm build
+          else
+            echo "CI: build skipped (frontend not initialized)"
+          fi

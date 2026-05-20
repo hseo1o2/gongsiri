@@ -28,5 +28,16 @@
         ]
       }
     ]
+  },
+  "extraKnownMarketplaces": {
+    "oh-my-claudecode": {
+      "source": {
+        "source": "github",
+        "repo": "yeachan-heo/oh-my-claudecode"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "oh-my-claudecode@oh-my-claudecode": true
   }
 }

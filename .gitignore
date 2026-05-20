@@ -36,7 +36,13 @@ coverage/
 lefthook-local.yml
 
 # Agent / Orchestrator state (kept local, not shared)
-.omc/
+# Exception: .omc/wiki/ is team-shared work log
+# NOTE: Use .omc/* (single star), NOT .omc/** (double star).
+# With **, the negation !.omc/wiki/ does not re-include wiki files
+# because ** matches recursively and overrides the negation for nested paths.
+# Single * only matches direct children of .omc/, making !.omc/wiki/ effective.
+.omc/*
+!.omc/wiki/
 .omx/
 
 # NOTE: .claude/ IS committed — it holds the team's shared Claude Code hooks and skills.

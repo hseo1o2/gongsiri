@@ -1,0 +1,35 @@
+---
+name: 버그 리포트
+about: 동작이 기대와 다른 문제를 신고합니다
+title: "[Bug] "
+labels: bug
+---
+
+## 버그 요약
+
+<!-- 무엇이 잘못되었는지 한두 줄로 -->
+
+## 재현 단계
+
+1.
+2.
+3.
+
+## 예상 동작
+
+<!-- 원래 어떻게 동작해야 하나 -->
+
+## 실제 동작
+
+<!-- 실제로 무슨 일이 일어났나 (에러 메시지·로그 포함) -->
+
+## 관련 기능 ID
+
+<!-- 예: AN-01, AGENT-ANALYZER-02 / 없으면 N/A -->
+<!-- ID 체계: 구현자 관점 ID (AUTH/ON/W/P/D/AN/R/PF-NN) 또는 에이전트 관점 ID (AGENT-{ROLE}-NN, ROLE ∈ COLLECTOR/ANALYZER/ORCH) -->
+
+## 환경
+
+- OS:
+- 브라우저 (frontend 이슈 시):
+- backend 버전 / 커밋 해시:

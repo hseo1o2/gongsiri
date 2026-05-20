@@ -1,0 +1,9 @@
+# gongsiri CODEOWNERS — 자동 리뷰어 지정
+# 규칙 정의: docs/rules/change-management.md §2
+# NOTE: 아래 @placeholder 는 PR 리뷰 시점에 실제 GitHub 핸들로 교체할 것.
+
+# 공유 인터페이스 스키마 — A·B·C 전원 리뷰
+/backend/schemas/   @GoBeromsu @teammate-B @teammate-C
+
+# 설계 문서는 SoT — 전원 합의
+/docs/              @GoBeromsu @teammate-B @teammate-C

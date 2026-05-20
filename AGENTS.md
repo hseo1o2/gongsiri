@@ -67,6 +67,19 @@ DART, KRX, 네이버 뉴스  →  normalized_data_bundle  →  analysis_result  
 7. **언어**: 본문·코멘트·커밋 메시지 한국어 OK, 코드·식별자는 영문.
 8. **lint**: `lefthook install` 한 번으로 자동 활성화. pre-commit이 변경 파일만 검사 (`*.py`→ruff, `*.{js,ts,jsx,tsx}`→eslint).
 
+## 협업 규칙 (docs/rules/)
+
+바이브 코딩 시 "기능 구현 폭발"을 막기 위한 SE 컨벤션. 코드 작성 전 필독.
+
+| 파일 | 분과 | 한 줄 요약 |
+|------|------|-----------|
+| [code-style.md](docs/rules/code-style.md) | Code Style / Quality | Modular Code 4규칙(진입점 순수성·잡동사니 파일 금지·단일 책임·200 LOC 상한) + 포맷·네이밍 |
+| [version-control.md](docs/rules/version-control.md) | Version Control | 브랜치·Conventional Commit·"코딩 전 1 PR = 1 concern 분해"·PR 크기 가이드 |
+| [change-management.md](docs/rules/change-management.md) | Change Management | A↔B↔C 인터페이스 변경 절차·CODEOWNERS·자동 라벨·에스컬레이션 |
+
+> 규칙 본문은 `docs/rules/`에만 있음 — 여기에 복붙 금지. 이 표는 포인터일 뿐이다.
+> Codex 도 `.codex/hooks.json` SessionStart 훅으로 동일 규칙 요약을 주입받는다 (Claude Code 와 같은 경험).
+
 ## 새 기능 추가 워크플로
 
 1. `feature/<owner>-<scope>` 브랜치 분기 (base=dev)

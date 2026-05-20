@@ -1,0 +1,56 @@
+name: PR Check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  title-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify Conventional Commit PR title
+        run: |
+          TITLE="${{ github.event.pull_request.title }}"
+          # 7 types + optional (scope) + optional ! (breaking change) + ": "
+          if echo "$TITLE" | grep -qE '^(feat|fix|docs|chore|refactor|test|style)(\(.+\))?!?: .+'; then
+            echo "PR title OK: $TITLE"
+          else
+            echo "::error::PR 제목이 Conventional Commit 형식이 아닙니다: '$TITLE'"
+            echo "::error::형식: <type>(<scope>): <summary>  — type ∈ feat|fix|docs|chore|refactor|test|style, breaking change 는 ! 표기 (예: feat!: ...)"
+            exit 1
+          fi
+
+  size-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Count changed files and LOC
+        id: size
+        run: |
+          BASE=${{ github.base_ref }}
+          git fetch origin $BASE
+          # Use --numstat for reliable machine-parseable output (not --stat which needs fragile parsing)
+          CHANGED_FILES=$(git diff --name-only origin/$BASE...HEAD \
+            | grep -vE '(\.lock$|-lock\.yaml$|__generated__|\.min\.(js|css)$)' \
+            | wc -l | tr -d ' ')
+          LOC=$(git diff --numstat origin/$BASE...HEAD \
+            | grep -vE '(\.lock$|-lock\.yaml$|__generated__)' \
+            | awk '{added+=$1; removed+=$2} END {print added+removed}')
+          echo "files=$CHANGED_FILES" >> $GITHUB_OUTPUT
+          echo "loc=$LOC" >> $GITHUB_OUTPUT
+      - name: Warn if large PR
+        if: ${{ fromJSON(steps.size.outputs.files) > 20 || fromJSON(steps.size.outputs.loc) > 400 }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # 경고 전용 — 라벨이 미생성이거나 권한 문제로 실패해도 job 은 절대 막지 않는다.
+          gh pr edit ${{ github.event.pull_request.number }} --add-label "size/large" \
+            || echo "::warning::'size/large' 라벨을 달지 못했습니다 (라벨 미생성?). 경고는 코멘트로 대체합니다."
+          gh pr comment ${{ github.event.pull_request.number }} \
+            --body "PR 크기 경고: 변경 파일 ${{ steps.size.outputs.files }}개, LOC ${{ steps.size.outputs.loc }}줄. 소프트 기준(20파일/400 LOC) 초과. 분할을 고려해 주세요. (블록 아님 — docs/rules/version-control.md §5)" \
+            || echo "::warning::크기 경고 코멘트 작성에 실패했습니다."

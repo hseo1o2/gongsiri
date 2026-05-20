@@ -1,0 +1,30 @@
+# actions/labeler@v5 config — 경로 기반 PR 자동 라벨
+# 규칙 정의: docs/rules/change-management.md §3
+
+frontend:
+  - changed-files:
+    - any-glob-to-any-file: 'frontend/**'
+
+backend:
+  - changed-files:
+    - any-glob-to-any-file: 'backend/**'
+
+interface:
+  - changed-files:
+    - any-glob-to-any-file:
+        - 'backend/schemas/**'
+        - 'docs/03-interface-schema.md'
+
+docs:
+  - changed-files:
+    - any-glob-to-any-file:
+        - 'docs/**'
+        - '*.md'
+
+ci:
+  - changed-files:
+    - any-glob-to-any-file:
+        - '.github/**'
+        - 'lefthook.yml'
+        - '.codex/**'
+        - '.claude/**'
