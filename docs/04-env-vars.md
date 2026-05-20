@@ -40,3 +40,8 @@ GONGSIRI_SCHEDULER_INTERVAL_MINUTES=30
 - Upstage Solar chat/runtime verification paths consume `UPSTAGE_API_KEY` and optionally `UPSTAGE_MODEL`.
 - Python env controls disclosure fetch execution.
 - stderr may contain diagnostics, but business output for the bridge must be machine-readable JSON on stdout only.
+
+## Local Loading Policy
+- `agent/` runtime surfaces may auto-load ignored local env files from repo-root `.env` and `agent/.env`.
+- Explicit shell environment variables still win over env-file defaults.
+- Optional override for deterministic tooling/tests: `GONGSIRI_ENV_FILE=<path-to-env>`.
