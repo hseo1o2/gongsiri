@@ -1,4 +1,5 @@
 import os
+
 import requests
 from dotenv import load_dotenv
 
@@ -96,9 +97,7 @@ def fetch_disclosures(
     data = response.json()
 
     if data.get("status") != "000":
-        raise RuntimeError(
-            f"OpenDART API error: {data.get('status')} / {data.get('message')}"
-        )
+        raise RuntimeError(f"OpenDART API error: {data.get('status')} / {data.get('message')}")
 
     disclosures = []
 
@@ -120,7 +119,9 @@ def fetch_disclosures(
     return disclosures
 
 
-def fetch_financials(corp_code: str, bsns_year: str = "2024", reprt_code: str = "11013") -> FinancialData:
+def fetch_financials(
+    corp_code: str, bsns_year: str = "2024", reprt_code: str = "11013"
+) -> FinancialData:
     """
     OpenDART 단일회사 주요계정 API로 주요 재무정보 수집.
     reprt_code:

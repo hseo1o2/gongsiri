@@ -5,8 +5,7 @@ from typing import Any
 
 import requests
 
-from backend.schemas.bundle import PriceVolumeData, DailyPriceVolume
-
+from backend.schemas.bundle import DailyPriceVolume, PriceVolumeData
 
 K_SKILL_TRADE_INFO_URL = "https://k-skill-proxy.nomadamas.org/v1/korean-stock/trade-info"
 DEFAULT_BAS_DD = "20250516"
@@ -133,11 +132,7 @@ def fetch_trade_info_from_kskill(
     data = response.json()
 
     raw_items = (
-        data.get("daily")
-        or data.get("items")
-        or data.get("data")
-        or data.get("results")
-        or []
+        data.get("daily") or data.get("items") or data.get("data") or data.get("results") or []
     )
 
     if isinstance(raw_items, dict):

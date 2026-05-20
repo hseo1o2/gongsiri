@@ -7,7 +7,6 @@ from dotenv import load_dotenv
 
 from backend.schemas.bundle import NewsDocument
 
-
 load_dotenv()
 
 NAVER_CLIENT_ID = os.getenv("NAVER_CLIENT_ID")
