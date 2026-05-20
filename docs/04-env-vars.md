@@ -9,6 +9,8 @@ PR1에서 Pi runtime과 Python collector bridge가 기대하는 환경변수를 
 - `UPSTAGE_MODEL` — optional model override
 - `PYTHON_BIN` — optional Python executable override for bridge spawning
 - `GONGSIRI_CONTRACT_VERSION` — optional contract version override; default policy is `v1`
+- `GONGSIRI_CHECKPOINT_PATH` — optional local checkpoint file override for last-seen disclosure state
+- `GONGSIRI_SCHEDULER_INTERVAL_MINUTES` — optional default interval for cron/scheduler checks (default `30`)
 
 ### Python collector side
 - `DART_API_KEY` — OpenDART disclosure API key
@@ -27,6 +29,8 @@ UPSTAGE_MODEL=
 PYTHON_BIN=python3
 GONGSIRI_CONTRACT_VERSION=v1
 DART_API_KEY=
+GONGSIRI_CHECKPOINT_PATH=
+GONGSIRI_SCHEDULER_INTERVAL_MINUTES=30
 ```
 
 `agent/.env.example` may mirror the Pi-only subset, but the repo-root `.env.example` is the onboarding source of truth for PR1.

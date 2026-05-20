@@ -97,3 +97,47 @@ Rules:
 ## Side-Effect Rule
 - `assets/stock_master.json` is read-only for Pi runtime execution.
 - PR1 runtime paths must use read-only company resolution and must not call `save_company_to_master()` while serving a tool request.
+
+## G002 Trigger Contract
+Trigger source is extended to:
+
+```ts
+type TriggerSource = "user" | "system" | "cron";
+```
+
+Triggered disclosure checks accept:
+
+```ts
+type DisclosureTriggerRequest = FetchDisclosuresRequest & {
+  source: TriggerSource;
+  metadata?: {
+    intervalMinutes?: number;
+    runReason?: string;
+  };
+};
+```
+
+Triggered disclosure checks return:
+
+```ts
+type TriggeredDisclosureResult = {
+  ok: boolean;
+  triggerSource: TriggerSource;
+  traceId: string;
+  contractVersion: "v1";
+  hasNewDisclosure: boolean;
+  newDisclosureCount: number;
+  newDisclosureIds: string[];
+  checkpoint: {
+    checkpointPath: string;
+    previousLastSeen: string | null;
+    currentLastSeen: string | null;
+  };
+  result: ToolResult;
+};
+```
+
+Rules:
+- successful runs may update ignored local checkpoint state
+- failed runs must not advance the checkpoint
+- first successful run initializes checkpoint state without counting all existing disclosures as new
