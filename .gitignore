@@ -45,5 +45,8 @@ lefthook-local.yml
 !.omc/wiki/
 !.omc/wiki/**
 .omx/
+.clawhip/
+.openchrome/
+uv.lock
 
 # NOTE: .claude/ IS committed — it holds the team's shared Claude Code hooks and skills.

@@ -49,11 +49,14 @@ def ensure_stock_master_file() -> None:
             json.dump(DEFAULT_LOCAL_STOCKS, f, ensure_ascii=False, indent=2)
 
 
-def load_stock_master() -> dict[str, dict[str, Any]]:
+def load_stock_master(*, create_if_missing: bool = True) -> dict[str, dict[str, Any]]:
     """
     로컬 종목 마스터 파일을 읽는다.
     """
-    ensure_stock_master_file()
+    if create_if_missing:
+        ensure_stock_master_file()
+    elif not STOCK_MASTER_PATH.exists():
+        return DEFAULT_LOCAL_STOCKS.copy()
 
     try:
         with open(STOCK_MASTER_PATH, "r", encoding="utf-8") as f:
@@ -82,13 +85,13 @@ def normalize_keyword(keyword: str) -> str:
     return keyword.strip()
 
 
-def find_in_local_master(keyword: str) -> CompanyInfo | None:
+def find_in_local_master(keyword: str, *, create_if_missing: bool = True) -> CompanyInfo | None:
     """
     stock_master.json에서 먼저 종목을 찾는다.
     정확히 일치하는 종목명을 우선 사용한다.
     """
     keyword = normalize_keyword(keyword)
-    stock_master = load_stock_master()
+    stock_master = load_stock_master(create_if_missing=create_if_missing)
 
     if keyword in stock_master:
         return CompanyInfo(**stock_master[keyword])
@@ -180,7 +183,7 @@ def save_company_to_master(company: CompanyInfo) -> None:
     save_stock_master(stock_master)
 
 
-def search_stock(keyword: str) -> CompanyInfo:
+def search_stock(keyword: str, *, persist_result: bool = True) -> CompanyInfo:
     """
     종목명 입력 → CompanyInfo 반환.
 
@@ -188,7 +191,7 @@ def search_stock(keyword: str) -> CompanyInfo:
     1. 메모리 캐시
     2. assets/stock_master.json
     3. k-skill API
-    4. 성공 시 stock_master.json에 저장
+    4. 성공 시 필요할 때만 stock_master.json에 저장
     """
     keyword = normalize_keyword(keyword)
 
@@ -198,7 +201,7 @@ def search_stock(keyword: str) -> CompanyInfo:
     if keyword in SEARCH_CACHE:
         return SEARCH_CACHE[keyword]
 
-    local_result = find_in_local_master(keyword)
+    local_result = find_in_local_master(keyword, create_if_missing=persist_result)
     if local_result:
         SEARCH_CACHE[keyword] = local_result
         return local_result
@@ -206,7 +209,8 @@ def search_stock(keyword: str) -> CompanyInfo:
     try:
         api_result = search_stock_from_kskill(keyword)
         SEARCH_CACHE[keyword] = api_result
-        save_company_to_master(api_result)
+        if persist_result:
+            save_company_to_master(api_result)
         return api_result
 
     except Exception as e:
@@ -214,3 +218,13 @@ def search_stock(keyword: str) -> CompanyInfo:
             f"종목 검색 실패: {keyword}. "
             f"로컬 stock_master에도 없고 k-skill 호출도 실패했습니다. 원인: {str(e)}"
         )
+
+
+def resolve_company_read_only(keyword: str) -> CompanyInfo:
+    """
+    Pi 런타임용 읽기 전용 종목 해석.
+
+    - tracked asset(`assets/stock_master.json`)을 생성/수정하지 않는다.
+    - 원격 조회가 성공해도 결과를 파일에 persist 하지 않는다.
+    """
+    return search_stock(keyword, persist_result=False)

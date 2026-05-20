@@ -7,7 +7,9 @@ from backend.schemas.bundle import DisclosureItem, FinancialData
 
 load_dotenv()
 
-DART_API_KEY = os.getenv("DART_API_KEY")
+
+def get_dart_api_key() -> str | None:
+    return os.getenv("DART_API_KEY")
 
 
 def get_disclosure_url(rcept_no: str) -> str:
@@ -75,13 +77,15 @@ def fetch_disclosures(
     end_de: str = "20241231",
     page_count: int = 20,
 ) -> list[DisclosureItem]:
-    if not DART_API_KEY:
+    api_key = get_dart_api_key()
+
+    if not api_key:
         raise ValueError("DART_API_KEY가 .env에 없습니다.")
 
     url = "https://opendart.fss.or.kr/api/list.json"
 
     params = {
-        "crtfc_key": DART_API_KEY,
+        "crtfc_key": api_key,
         "corp_code": corp_code,
         "bgn_de": bgn_de,
         "end_de": end_de,
@@ -97,7 +101,9 @@ def fetch_disclosures(
     data = response.json()
 
     if data.get("status") != "000":
-        raise RuntimeError(f"OpenDART API error: {data.get('status')} / {data.get('message')}")
+        raise RuntimeError(
+            f"OpenDART API error: {data.get('status')} / {data.get('message')}"
+        )
 
     disclosures = []
 
@@ -120,7 +126,9 @@ def fetch_disclosures(
 
 
 def fetch_financials(
-    corp_code: str, bsns_year: str = "2024", reprt_code: str = "11013"
+    corp_code: str,
+    bsns_year: str = "2024",
+    reprt_code: str = "11013",
 ) -> FinancialData:
     """
     OpenDART 단일회사 주요계정 API로 주요 재무정보 수집.
@@ -130,13 +138,15 @@ def fetch_financials(
     - 11013: 1분기보고서
     - 11014: 3분기보고서
     """
-    if not DART_API_KEY:
+    api_key = get_dart_api_key()
+
+    if not api_key:
         raise ValueError("DART_API_KEY가 .env에 없습니다.")
 
     url = "https://opendart.fss.or.kr/api/fnlttSinglAcnt.json"
 
     params = {
-        "crtfc_key": DART_API_KEY,
+        "crtfc_key": api_key,
         "corp_code": corp_code,
         "bsns_year": bsns_year,
         "reprt_code": reprt_code,
