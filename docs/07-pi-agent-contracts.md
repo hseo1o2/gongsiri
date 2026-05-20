@@ -90,7 +90,8 @@ python -m backend.collector.cli.fetch_disclosures
 Rules:
 - stdout emits JSON only
 - stderr is diagnostic only
-- nonzero exit must map to `bridge_process_failed` in the TS runner layer
+- nonzero exit with **no valid ToolResult JSON** must map to `bridge_process_failed` in the TS runner layer
+- nonzero exit with a valid typed failure envelope may pass through intact
 - malformed stdout JSON must map to `bridge_malformed_output`
 
 ## Side-Effect Rule

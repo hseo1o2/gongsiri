@@ -7,19 +7,19 @@
 
 ```
 gongsiri/
-├── frontend/                 # Next.js 14 App Router (C 담당)
-├── backend/                  # FastAPI 단일 서비스 (api/agent/db = C, collector = A, analyzer = B, schemas = 공유)
+├── agent/                    # PR1 canonical Pi runtime root (C 담당) — prompt, session, skill, tool, contracts
+├── backend/                  # Python domain executors (collector = A, analyzer = B, schemas = 공유)
 ├── assets/                   # 정적 자산 — 기획서 PDF, 디자인 토큰, stock_master.json, dart_debug_main.html
-├── docs/                     # 설계 문서 (01~05) — 코드 작성 전 필독
+├── docs/                     # 설계 문서 (02~07) — 코드 작성 전 필독
 ├── .claude/                  # 팀 공유 Claude Code 설정 (hooks, /commit skill)
 ├── lefthook.yml              # pre-commit 변경파일 lint + pre-push 보호브랜치 차단
 ├── pyproject.toml            # ruff 설정
 ├── .env.example
-├── .gitignore                # data/ 등 런타임 캐시·.omc/·.omx/·node_modules 제외
+├── .gitignore                # data/, runtime noise(.clawhip/.openchrome), local state(.omc/.omx), node_modules 제외
 └── AGENTS.md / CLAUDE.md / README.md
 ```
 
-> 런타임 데이터는 `.gitignore`된 `data/`에 A의 collector가 자동 생성.
+> 런타임 데이터는 `.gitignore`된 `data/`에 A의 collector가 자동 생성되며, Pi/OMX 로컬 상태는 `.clawhip/`, `.openchrome/`, `.omc/`, `.omx/`에만 남긴다.
 
 ## 사람 담당 (A / B / C)
 
@@ -27,7 +27,9 @@ gongsiri/
 |------|------|----------|----------|
 | **A** | 수집·정규화 | `backend/collector/` (`dart.py`, `krx/`, `naver/`, `document_parse.py`, `normalize.py`) | `normalized_data_bundle` (A→B 인터페이스, `backend/schemas/bundle.py`) |
 | **B** | 분석·리포트 | `backend/analyzer/` (`checklist.py`, `solar_step1.py`, `solar_step2.py`, `qa.py`) | `analysis_result` (B→C 인터페이스: risk_score/level + 단기·장기 리포트) |
-| **C** | API·스케줄러·DB·Frontend | `backend/api/`, `backend/agent/`, `backend/db/`, `frontend/` | REST API + 30분 폴링 오케스트레이션 + Supabase + Next.js UI |
+| **C** | Pi 런타임·오케스트레이션 | `agent/` | manual prompt runtime, skill/tool orchestration, typed Pi envelopes |
+
+> PR1(`feature/pi-agent-bootstrap`) 기준으로 C의 canonical runtime root는 `agent/`이다. `backend/main.py`는 기존 FastAPI surface로 남아 있으며, `frontend/`, cron, DB는 PR1 out-of-scope다.
 
 ## 작전주 6개 항목 owner 매핑
 
@@ -49,9 +51,9 @@ gongsiri/
 ## A → B → C 데이터 인터페이스 (요약)
 
 ```
-[외부 데이터]              [A: collector]             [B: analyzer]                [C: api/agent/frontend]
-DART, KRX, 네이버 뉴스  →  normalized_data_bundle  →  analysis_result          →  REST API → Next.js UI
-증권사 PDF (Document Parse)  (Pydantic, schemas/)      (risk_score/level + 리포트)   + 30분 APScheduler 폴링
+[외부 데이터]              [A: collector]             [B: analyzer]                [C: agent runtime]
+DART, KRX, 네이버 뉴스  →  normalized_data_bundle  →  analysis_result          →  Pi skill/tool envelope
+증권사 PDF (Document Parse)  (Pydantic, schemas/)      (risk_score/level + 리포트)   + typed agent response
 ```
 
 자세한 필드: `docs/03-interface-schema.md`.
@@ -89,12 +91,15 @@ DART, KRX, 네이버 뉴스  →  normalized_data_bundle  →  analysis_result  
 5. 코드 작성·테스트
 6. `/commit` 스킬로 커밋 (스킬이 자동으로 type/scope 분석)
 7. `git push -u origin feature/<owner>-<scope>` → GitHub PR (base=dev)
-8. 리뷰 권장 (개발 속도를 위해 GitHub 차원의 review-required는 끔). 큰 변경·인터페이스 수정은 1명 이상 리뷰 후 머지.
+8. 모든 `dev` 대상 PR은 **최소 1명 이상 리뷰 후 머지**. 인터페이스/문서 권한 변경은 반드시 리뷰 확보.
 9. `dev → main`은 데모 전날/배포 직전에만
 
 ## 빠른 명령
 
 ```bash
+# Pi runtime dev
+cd agent && npm run typecheck
+
 # Backend dev
 cd backend && uv run uvicorn main:app --reload
 
@@ -102,7 +107,8 @@ cd backend && uv run uvicorn main:app --reload
 cd frontend && pnpm dev
 
 # 테스트
-cd backend && uv run pytest
+python3 -m unittest discover -s tests -v
+cd agent && npm test
 cd frontend && pnpm test
 
 # git hook 활성화 (clone 직후 1회)

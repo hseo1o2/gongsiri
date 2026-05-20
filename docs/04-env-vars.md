@@ -19,7 +19,7 @@ PR1에서 Pi runtime과 Python collector bridge가 기대하는 환경변수를 
 - Missing `DART_API_KEY` must produce a typed `missing_env` failure in the bridge response path.
 
 ## `.env.example` Policy
-Current `.env.example` is empty in this branch. Before PR1 integration completes, it should be updated to document:
+Root `.env.example` must document the PR1 bootstrap keys as:
 
 ```dotenv
 UPSTAGE_API_KEY=
@@ -29,7 +29,7 @@ GONGSIRI_CONTRACT_VERSION=v1
 DART_API_KEY=
 ```
 
-This doc is the authority until `.env.example` is populated.
+`agent/.env.example` may mirror the Pi-only subset, but the repo-root `.env.example` is the onboarding source of truth for PR1.
 
 ## Runtime Separation
 - Pi runtime env controls orchestration and subprocess invocation.
