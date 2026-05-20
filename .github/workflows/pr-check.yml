@@ -7,13 +7,20 @@ on:
 permissions:
   pull-requests: write
 
+# 같은 PR 에 새 커밋이 푸시되면 진행 중이던 이전 검사를 취소한다.
+concurrency:
+  group: pr-check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   title-check:
     runs-on: ubuntu-latest
     steps:
       - name: Verify Conventional Commit PR title
+        # env 로 전달 — PR 제목의 셸 메타문자가 스크립트로 평가되지 않게 한다 (인젝션 차단).
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
         run: |
-          TITLE="${{ github.event.pull_request.title }}"
           # 7 types + optional (scope) + optional ! (breaking change) + ": "
           if echo "$TITLE" | grep -qE '^(feat|fix|docs|chore|refactor|test|style)(\(.+\))?!?: .+'; then
             echo "PR title OK: $TITLE"
@@ -25,24 +32,28 @@ jobs:
 
   size-check:
     runs-on: ubuntu-latest
+    # 경고 전용 job — 어떤 단계가 실패해도 PR 머지를 막지 않는다 (version-control.md §5).
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Count changed files and LOC
         id: size
+        # env 로 전달 — base 브랜치명이 스크립트로 평가되지 않게 한다 (인젝션 차단).
+        env:
+          BASE: ${{ github.base_ref }}
         run: |
-          BASE=${{ github.base_ref }}
-          git fetch origin $BASE
+          git fetch origin "$BASE"
           # Use --numstat for reliable machine-parseable output (not --stat which needs fragile parsing)
-          CHANGED_FILES=$(git diff --name-only origin/$BASE...HEAD \
+          CHANGED_FILES=$(git diff --name-only "origin/$BASE...HEAD" \
             | grep -vE '(\.lock$|-lock\.yaml$|__generated__|\.min\.(js|css)$)' \
             | wc -l | tr -d ' ')
-          LOC=$(git diff --numstat origin/$BASE...HEAD \
+          LOC=$(git diff --numstat "origin/$BASE...HEAD" \
             | grep -vE '(\.lock$|-lock\.yaml$|__generated__)' \
             | awk '{added+=$1; removed+=$2} END {print added+removed}')
-          echo "files=$CHANGED_FILES" >> $GITHUB_OUTPUT
-          echo "loc=$LOC" >> $GITHUB_OUTPUT
+          echo "files=$CHANGED_FILES" >> "$GITHUB_OUTPUT"
+          echo "loc=$LOC" >> "$GITHUB_OUTPUT"
       - name: Warn if large PR
         if: ${{ fromJSON(steps.size.outputs.files) > 20 || fromJSON(steps.size.outputs.loc) > 400 }}
         env:

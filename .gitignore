@@ -43,6 +43,7 @@ lefthook-local.yml
 # Single * only matches direct children of .omc/, making !.omc/wiki/ effective.
 .omc/*
 !.omc/wiki/
+!.omc/wiki/**
 .omx/
 
 # NOTE: .claude/ IS committed — it holds the team's shared Claude Code hooks and skills.

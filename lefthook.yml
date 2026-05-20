@@ -11,18 +11,20 @@ pre-commit:
       stage_fixed: true
     js-lint:
       glob: "*.{js,jsx,mjs,cjs,ts,tsx}"
+      # pnpm --dir 로 실행 — cd 하면 {staged_files} 의 repo-root 상대경로가 깨진다.
       run: |
         if [ -f frontend/package.json ] && [ -d frontend/node_modules ]; then
-          cd frontend && pnpm exec eslint --fix {staged_files}
+          pnpm --dir frontend exec eslint --fix {staged_files}
         else
           echo "lefthook: eslint skipped (frontend not initialized)"
         fi
       stage_fixed: true
     js-prettier:
       glob: "*.{js,jsx,mjs,cjs,ts,tsx,json,md}"
+      # pnpm --dir 로 실행 — cd 하면 {staged_files} 의 repo-root 상대경로가 깨진다.
       run: |
         if [ -f frontend/package.json ] && [ -d frontend/node_modules ]; then
-          cd frontend && pnpm exec prettier --write {staged_files}
+          pnpm --dir frontend exec prettier --write {staged_files}
         else
           echo "lefthook: prettier skipped (frontend not initialized)"
         fi

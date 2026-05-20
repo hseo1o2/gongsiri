@@ -2,8 +2,28 @@ name: CI
 
 on:
   pull_request:
+    # 코드/빌드에 영향 없는 변경(문서 등)에는 CI 를 돌리지 않는다.
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "pyproject.toml"
+      - ".github/workflows/ci.yml"
   push:
     branches: [dev, main]
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "pyproject.toml"
+      - ".github/workflows/ci.yml"
+
+# lint/build 잡은 읽기 권한만 필요하다 (최소 권한).
+permissions:
+  contents: read
+
+# 같은 ref 에 새 푸시가 오면 진행 중이던 이전 CI 를 취소한다.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   python-lint:

@@ -5,7 +5,13 @@ on:
     types: [opened, synchronize]
 
 permissions:
+  contents: read
   pull-requests: write
+
+# 같은 PR 에 새 커밋이 오면 진행 중이던 이전 라벨링을 취소한다.
+concurrency:
+  group: auto-label-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 jobs:
   label:
