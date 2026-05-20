@@ -211,3 +211,47 @@ Rules:
 - stdout must remain JSON-only
 - failures must remain machine-readable
 - preparation payloads are interfaces only and must not trigger real DB writes or notification delivery
+
+## Solar Chat Contract
+
+Tool name: `chat_with_solar`
+
+Accepted request:
+
+```ts
+type SolarChatRequest = {
+  prompt: string;
+  systemPrompt?: string;
+  traceId?: string;
+  contractVersion?: "v1";
+};
+```
+
+Returned envelope:
+
+```ts
+type SolarChatResult =
+  | {
+      ok: true;
+      traceId: string;
+      contractVersion: "v1";
+      observedAt: string;
+      model: string;
+      text: string;
+    }
+  | {
+      ok: false;
+      traceId: string;
+      contractVersion: "v1";
+      observedAt: string;
+      error: {
+        code: "missing_env" | "solar_api_error" | "solar_malformed_output";
+        message: string;
+      };
+    };
+```
+
+Rules:
+- `UPSTAGE_API_KEY` must come from env, never tracked files
+- the runtime may default `UPSTAGE_MODEL` to `solar-pro3`
+- stdout remains JSON-only and safe to use as PR evidence

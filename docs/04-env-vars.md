@@ -6,7 +6,7 @@ PR1에서 Pi runtime과 Python collector bridge가 기대하는 환경변수를 
 ## Required Variables
 ### Pi runtime / Node side
 - `UPSTAGE_API_KEY` — Upstage Solar runtime access key
-- `UPSTAGE_MODEL` — optional model override
+- `UPSTAGE_MODEL` — optional model override (e.g. `solar-pro3`)
 - `PYTHON_BIN` — optional Python executable override for bridge spawning
 - `GONGSIRI_CONTRACT_VERSION` — optional contract version override; default policy is `v1`
 - `GONGSIRI_CHECKPOINT_PATH` — optional local checkpoint file override for last-seen disclosure state
@@ -37,5 +37,6 @@ GONGSIRI_SCHEDULER_INTERVAL_MINUTES=30
 
 ## Runtime Separation
 - Pi runtime env controls orchestration and subprocess invocation.
+- Upstage Solar chat/runtime verification paths consume `UPSTAGE_API_KEY` and optionally `UPSTAGE_MODEL`.
 - Python env controls disclosure fetch execution.
 - stderr may contain diagnostics, but business output for the bridge must be machine-readable JSON on stdout only.

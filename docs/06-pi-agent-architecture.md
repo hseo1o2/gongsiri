@@ -86,3 +86,14 @@ Responsibilities:
 - pipeline normalization must not delete local report files
 - analyzer core should stay deterministic first, with any narrative/LLM boundary clearly isolated
 - persistence/notification stay as DTO/port preparation only
+
+## Solar Chat Verification Addendum
+
+### Runtime surface
+- `agent/src/tools/chatWithSolar.ts`
+- `agent/src/cli/runSolarChat.ts`
+
+### Role
+- provide one live Upstage Solar-backed Pi runtime communication path for operator/runtime verification
+- keep API-key use in env only
+- return a typed machine-readable chat envelope
