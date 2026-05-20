@@ -1,0 +1,383 @@
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;}
+body,html{font-family:'Noto Sans KR',sans-serif;letter-spacing:-0.03em;}
+
+.shell{display:grid;grid-template-columns:200px 1fr;min-height:640px;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden;}
+
+/* SIDEBAR */
+.side{background:#0A0F1C;padding:0;display:flex;flex-direction:column;}
+.side-logo{display:flex;align-items:center;gap:9px;padding:18px 16px 14px;border-bottom:0.5px solid #1A2235;}
+.logo-mark{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:-0.07em;color:#E8F4FF;line-height:1;}
+.logo-accent{color:#3B8BFF;}
+.logo-sub{font-size:9px;letter-spacing:0.08em;color:#444441;margin-left:2px;vertical-align:middle;}
+
+.side-nav{padding:12px 10px;flex:1;}
+.nav-section-label{font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;color:#3B4A63;padding:0 8px;margin:14px 0 6px;}
+.nav-item{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:7px;cursor:pointer;margin-bottom:1px;}
+.nav-item.active{background:#1A2235;}
+.nav-item.active .ni-label{color:#E8F4FF;font-weight:500;}
+.ni-label{font-size:13px;letter-spacing:-0.03em;color:#888780;}
+.ni-badge{margin-left:auto;background:#E24B4A;color:#fff;font-size:10px;font-family:'IBM Plex Mono',monospace;border-radius:100px;padding:1px 6px;}
+
+.side-footer{padding:12px 10px;border-top:0.5px solid #1A2235;}
+.side-user{display:flex;align-items:center;gap:8px;padding:8px 10px;}
+.user-avatar{width:28px;height:28px;border-radius:50%;background:#1A2235;border:0.5px solid #2A3A52;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:#B5D4F4;letter-spacing:0;}
+.user-name{font-size:12px;color:#888780;letter-spacing:-0.02em;}
+
+/* MAIN */
+.main{background:var(--color-background-secondary);display:flex;flex-direction:column;overflow:hidden;}
+
+/* TOPBAR */
+.topbar{background:var(--color-background-primary);border-bottom:0.5px solid var(--color-border-tertiary);padding:0 20px;height:52px;display:flex;align-items:center;gap:12px;}
+.topbar-title{font-size:15px;font-weight:500;letter-spacing:-0.04em;color:var(--color-text-primary);flex:1;}
+.search-wrap{position:relative;}
+.search-inp{height:32px;width:180px;padding:0 10px 0 30px;font-size:12px;font-family:'Noto Sans KR',sans-serif;letter-spacing:-0.03em;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-secondary);color:var(--color-text-primary);outline:none;}
+.search-ico{position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--color-text-tertiary);}
+.topbar-btn{display:inline-flex;align-items:center;gap:5px;background:#0A0F1C;color:#E8F4FF;font-size:12px;font-weight:500;letter-spacing:-0.02em;font-family:'Noto Sans KR',sans-serif;padding:6px 12px;border:none;border-radius:var(--border-radius-md);cursor:pointer;white-space:nowrap;}
+
+/* CONTENT */
+.content{padding:16px;display:flex;flex-direction:column;gap:14px;overflow-y:auto;}
+
+/* METRIC ROW */
+.metric-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.met{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:12px 14px;}
+.met-val{font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:500;letter-spacing:-0.02em;color:var(--color-text-primary);}
+.met-lbl{font-size:11px;color:var(--color-text-tertiary);margin-top:3px;letter-spacing:-0.01em;}
+.met-sub{font-size:10px;font-family:'IBM Plex Mono',monospace;margin-top:4px;}
+
+/* MAIN GRID */
+.main-grid{display:grid;grid-template-columns:1fr 300px;gap:14px;}
+
+/* STOCK LIST */
+.panel{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden;}
+.panel-head{padding:12px 16px;border-bottom:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;justify-content:space-between;}
+.panel-title{font-size:13px;font-weight:500;letter-spacing:-0.03em;}
+.panel-action{font-size:11px;color:#3B8BFF;letter-spacing:-0.02em;cursor:pointer;background:none;border:none;}
+
+.stock-row{display:grid;grid-template-columns:1fr 90px 72px 80px 90px;align-items:center;padding:10px 16px;border-bottom:0.5px solid var(--color-border-tertiary);gap:8px;}
+.stock-row:last-child{border-bottom:none;}
+.stock-row.header{padding:7px 16px;background:var(--color-background-secondary);}
+.col-head{font-size:10.5px;color:var(--color-text-tertiary);letter-spacing:-0.01em;font-weight:500;}
+.col-head.right{text-align:right;}
+
+.s-name-block{display:flex;flex-direction:column;gap:1px;}
+.s-name{font-size:13px;font-weight:500;letter-spacing:-0.03em;}
+.s-code{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--color-text-tertiary);letter-spacing:0;}
+.s-price{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;text-align:right;letter-spacing:0;}
+.s-chg{font-family:'IBM Plex Mono',monospace;font-size:12px;text-align:right;letter-spacing:0;}
+.up{color:#E24B4A;}.dn{color:#185FA5;}
+
+.risk-pill{display:inline-flex;align-items:center;gap:4px;border-radius:100px;font-size:11px;font-weight:500;padding:3px 9px;letter-spacing:-0.01em;white-space:nowrap;}
+.rp-safe{background:#EAF3DE;color:#3B6D11;}
+.rp-warn{background:#FAEEDA;color:#854F0B;}
+.rp-danger{background:#FCEBEB;color:#A32D2D;}
+.rdot{width:5px;height:5px;border-radius:50%;}
+.rd-s{background:#639922;}.rd-w{background:#BA7517;}.rd-d{background:#E24B4A;}
+
+.bar-mini{height:3px;border-radius:100px;background:var(--color-background-secondary);overflow:hidden;margin-top:4px;}
+.bar-fill{height:100%;border-radius:100px;}
+
+/* ALERT PANEL */
+.alert-panel{display:flex;flex-direction:column;}
+.alert-item{padding:12px 14px;border-bottom:0.5px solid var(--color-border-tertiary);display:flex;flex-direction:column;gap:4px;cursor:pointer;}
+.alert-item:last-child{border-bottom:none;}
+.alert-item:hover{background:var(--color-background-secondary);}
+.ai-top{display:flex;align-items:center;justify-content:space-between;}
+.ai-badge{font-size:10px;font-weight:500;letter-spacing:-0.01em;padding:2px 8px;border-radius:100px;}
+.aib-danger{background:#FCEBEB;color:#A32D2D;}
+.aib-warn{background:#FAEEDA;color:#854F0B;}
+.aib-info{background:#E6F1FB;color:#185FA5;}
+.ai-time{font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--color-text-tertiary);letter-spacing:0;}
+.ai-stock{font-size:13px;font-weight:500;letter-spacing:-0.03em;margin-top:2px;}
+.ai-desc{font-size:11px;color:var(--color-text-secondary);letter-spacing:-0.02em;line-height:1.45;}
+
+/* AGENT STATUS */
+.agent-bar{background:#0A0F1C;padding:9px 16px;display:flex;align-items:center;gap:10px;}
+.agent-dot{width:7px;height:7px;border-radius:50%;background:#639922;flex-shrink:0;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+.agent-label{font-size:11px;color:#B5D4F4;letter-spacing:-0.01em;flex:1;}
+.agent-next{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#5F5E5A;letter-spacing:0;}
+</style>
+
+<div style="padding:1.5rem 0 2rem;">
+<h2 class="sr-only">공시리 메인 대시보드 레이아웃</h2>
+
+<div class="shell">
+  <!-- SIDEBAR -->
+  <div class="side">
+    <div class="side-logo">
+      <svg width="22" height="22" viewBox="0 0 30 30" fill="none">
+        <path d="M4 22 L15 7 L26 22" stroke="#3B8BFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M8 18 L22 18" stroke="#3B8BFF" stroke-width="1.6" stroke-linecap="round" opacity="0.4"/>
+        <circle cx="15" cy="7" r="2.2" fill="#E24B4A"/>
+      </svg>
+      <div>
+        <span class="logo-mark">공시리<span class="logo-accent">.</span></span>
+        <span class="logo-sub">DISCLOSURE AI</span>
+      </div>
+    </div>
+
+    <div class="side-nav">
+      <p class="nav-section-label">메인</p>
+      <div class="nav-item active">
+        <i class="ti ti-layout-dashboard" style="color:#3B8BFF;font-size:15px;" aria-hidden="true"></i>
+        <span class="ni-label">대시보드</span>
+      </div>
+      <div class="nav-item">
+        <i class="ti ti-eye" style="color:#5F5E5A;font-size:15px;" aria-hidden="true"></i>
+        <span class="ni-label">워치리스트</span>
+        <span class="ni-badge">12</span>
+      </div>
+      <div class="nav-item">
+        <i class="ti ti-bell" style="color:#5F5E5A;font-size:15px;" aria-hidden="true"></i>
+        <span class="ni-label">공시 알림</span>
+        <span class="ni-badge">3</span>
+      </div>
+
+      <p class="nav-section-label">분석</p>
+      <div class="nav-item">
+        <i class="ti ti-file-analytics" style="color:#5F5E5A;font-size:15px;" aria-hidden="true"></i>
+        <span class="ni-label">리포트</span>
+      </div>
+      <div class="nav-item">
+        <i class="ti ti-chart-pie" style="color:#5F5E5A;font-size:15px;" aria-hidden="true"></i>
+        <span class="ni-label">포트폴리오</span>
+      </div>
+      <div class="nav-item">
+        <i class="ti ti-message-2" style="color:#5F5E5A;font-size:15px;" aria-hidden="true"></i>
+        <span class="ni-label">Q&amp;A</span>
+      </div>
+
+      <p class="nav-section-label">설정</p>
+      <div class="nav-item">
+        <i class="ti ti-settings" style="color:#5F5E5A;font-size:15px;" aria-hidden="true"></i>
+        <span class="ni-label">설정</span>
+      </div>
+    </div>
+
+    <div class="side-footer">
+      <div class="side-user">
+        <div class="user-avatar">장</div>
+        <span class="user-name">장현서</span>
+        <i class="ti ti-chevron-right" style="color:#444441;font-size:13px;margin-left:auto;" aria-hidden="true"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <!-- AGENT STATUS BAR -->
+    <div class="agent-bar">
+      <div class="agent-dot"></div>
+      <span class="agent-label">에이전트 모니터링 중 — 12개 종목 실시간 감시</span>
+      <span class="agent-next">다음 폴링 24:00</span>
+      <button style="margin-left:10px;background:#1A2235;border:0.5px solid #2A3A52;color:#B5D4F4;font-size:11px;font-family:'Noto Sans KR',sans-serif;letter-spacing:-0.02em;padding:4px 10px;border-radius:6px;cursor:pointer;">
+        <i class="ti ti-refresh" style="font-size:12px;margin-right:4px;" aria-hidden="true"></i>지금 체크
+      </button>
+    </div>
+
+    <!-- TOPBAR -->
+    <div class="topbar">
+      <span class="topbar-title">대시보드</span>
+      <div class="search-wrap">
+        <i class="ti ti-search search-ico" aria-hidden="true"></i>
+        <input class="search-inp" type="text" placeholder="종목 검색" />
+      </div>
+      <button class="topbar-btn">
+        <i class="ti ti-plus" aria-hidden="true"></i>종목 추가
+      </button>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="content">
+
+      <!-- METRICS -->
+      <div class="metric-row">
+        <div class="met">
+          <p class="met-val">12</p>
+          <p class="met-lbl">모니터링 종목</p>
+        </div>
+        <div class="met">
+          <p class="met-val" style="color:#E24B4A;">3</p>
+          <p class="met-lbl">오늘 신규 공시</p>
+          <p class="met-sub" style="color:#E24B4A;">▲ 어제 대비 +2</p>
+        </div>
+        <div class="met">
+          <p class="met-val" style="color:#BA7517;">1</p>
+          <p class="met-lbl">주의 종목</p>
+          <p class="met-sub" style="color:var(--color-text-tertiary);">카카오</p>
+        </div>
+        <div class="met">
+          <p class="met-val" style="color:#639922;">0</p>
+          <p class="met-lbl">위험 종목</p>
+          <p class="met-sub" style="color:#639922;">이상 없음</p>
+        </div>
+      </div>
+
+      <!-- MAIN GRID -->
+      <div class="main-grid">
+
+        <!-- STOCK LIST -->
+        <div class="panel">
+          <div class="panel-head">
+            <span class="panel-title">워치리스트</span>
+            <button class="panel-action">전체 보기 →</button>
+          </div>
+          <!-- header -->
+          <div class="stock-row header">
+            <span class="col-head">종목</span>
+            <span class="col-head right">현재가</span>
+            <span class="col-head right">등락</span>
+            <span class="col-head" style="text-align:center;">리스크</span>
+            <span class="col-head">작전주 지수</span>
+          </div>
+          <!-- rows -->
+          <div class="stock-row">
+            <div class="s-name-block">
+              <span class="s-name">카카오</span>
+              <span class="s-code">035720 · KOSPI</span>
+            </div>
+            <span class="s-price">42,650</span>
+            <span class="s-chg up">▲ 1.2%</span>
+            <div style="display:flex;justify-content:center;">
+              <span class="risk-pill rp-warn"><span class="rdot rd-w"></span>주의</span>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--color-text-tertiary);font-family:'IBM Plex Mono',monospace;margin-bottom:3px;"><span>2 / 6</span></div>
+              <div class="bar-mini"><div class="bar-fill" style="width:33%;background:#BA7517;"></div></div>
+            </div>
+          </div>
+          <div class="stock-row">
+            <div class="s-name-block">
+              <span class="s-name">삼성전자</span>
+              <span class="s-code">005930 · KOSPI</span>
+            </div>
+            <span class="s-price">75,400</span>
+            <span class="s-chg dn">▼ 0.5%</span>
+            <div style="display:flex;justify-content:center;">
+              <span class="risk-pill rp-safe"><span class="rdot rd-s"></span>안전</span>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--color-text-tertiary);font-family:'IBM Plex Mono',monospace;margin-bottom:3px;"><span>0 / 6</span></div>
+              <div class="bar-mini"><div class="bar-fill" style="width:0%;background:#639922;"></div></div>
+            </div>
+          </div>
+          <div class="stock-row">
+            <div class="s-name-block">
+              <span class="s-name">에코프로비엠</span>
+              <span class="s-code">247540 · KOSDAQ</span>
+            </div>
+            <span class="s-price">128,900</span>
+            <span class="s-chg up">▲ 3.8%</span>
+            <div style="display:flex;justify-content:center;">
+              <span class="risk-pill rp-safe"><span class="rdot rd-s"></span>안전</span>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--color-text-tertiary);font-family:'IBM Plex Mono',monospace;margin-bottom:3px;"><span>1 / 6</span></div>
+              <div class="bar-mini"><div class="bar-fill" style="width:17%;background:#639922;"></div></div>
+            </div>
+          </div>
+          <div class="stock-row">
+            <div class="s-name-block">
+              <span class="s-name">셀트리온</span>
+              <span class="s-code">068270 · KOSPI</span>
+            </div>
+            <span class="s-price">162,000</span>
+            <span class="s-chg dn">▼ 1.1%</span>
+            <div style="display:flex;justify-content:center;">
+              <span class="risk-pill rp-safe"><span class="rdot rd-s"></span>안전</span>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--color-text-tertiary);font-family:'IBM Plex Mono',monospace;margin-bottom:3px;"><span>1 / 6</span></div>
+              <div class="bar-mini"><div class="bar-fill" style="width:17%;background:#639922;"></div></div>
+            </div>
+          </div>
+          <div class="stock-row">
+            <div class="s-name-block">
+              <span class="s-name">코스피200</span>
+              <span class="s-code">KOSDAQ · 소형</span>
+            </div>
+            <span class="s-price">3,450</span>
+            <span class="s-chg up">▲ 5.9%</span>
+            <div style="display:flex;justify-content:center;">
+              <span class="risk-pill rp-danger"><span class="rdot rd-d"></span>위험</span>
+            </div>
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--color-text-tertiary);font-family:'IBM Plex Mono',monospace;margin-bottom:3px;"><span>4 / 6</span></div>
+              <div class="bar-mini"><div class="bar-fill" style="width:67%;background:#E24B4A;"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ALERT PANEL -->
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div class="panel">
+            <div class="panel-head">
+              <span class="panel-title">최근 공시 알림</span>
+              <button class="panel-action">전체 →</button>
+            </div>
+            <div class="alert-panel">
+              <div class="alert-item">
+                <div class="ai-top">
+                  <span class="ai-badge aib-danger">위험</span>
+                  <span class="ai-time">09:14</span>
+                </div>
+                <span class="ai-stock">코스피200 소형주</span>
+                <span class="ai-desc">작전주 징후 4점 이상 감지 — CB 3회·최대주주 변경 2회·비정상 급등 검출</span>
+              </div>
+              <div class="alert-item">
+                <div class="ai-top">
+                  <span class="ai-badge aib-warn">주의</span>
+                  <span class="ai-time">08:52</span>
+                </div>
+                <span class="ai-stock">카카오</span>
+                <span class="ai-desc">주요사항보고서 신규 공시 — CB 추가 발행 검토 내용 포함</span>
+              </div>
+              <div class="alert-item">
+                <div class="ai-top">
+                  <span class="ai-badge aib-info">공시</span>
+                  <span class="ai-time">08:30</span>
+                </div>
+                <span class="ai-stock">삼성전자</span>
+                <span class="ai-desc">분기보고서 — 이상 시그널 없음, 분석 완료</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- PORTFOLIO RISK -->
+          <div class="panel" style="padding:14px 16px;">
+            <p class="panel-title" style="margin-bottom:12px;">포트폴리오 리스크</p>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+              <div style="flex:1;">
+                <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--color-text-tertiary);margin-bottom:5px;letter-spacing:-0.01em;"><span>전체 위험도</span><span style="font-family:'IBM Plex Mono',monospace;letter-spacing:0;">2.1 / 6</span></div>
+                <div style="height:6px;background:var(--color-background-secondary);border-radius:100px;overflow:hidden;">
+                  <div style="height:100%;width:35%;background:#BA7517;border-radius:100px;"></div>
+                </div>
+              </div>
+              <span class="risk-pill rp-warn" style="flex-shrink:0;"><span class="rdot rd-w"></span>주의</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;text-align:center;">
+              <div style="background:#EAF3DE;border-radius:var(--border-radius-md);padding:8px 4px;">
+                <p style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:500;color:#3B6D11;">10</p>
+                <p style="font-size:10px;color:#3B6D11;letter-spacing:-0.01em;">안전</p>
+              </div>
+              <div style="background:#FAEEDA;border-radius:var(--border-radius-md);padding:8px 4px;">
+                <p style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:500;color:#854F0B;">1</p>
+                <p style="font-size:10px;color:#854F0B;letter-spacing:-0.01em;">주의</p>
+              </div>
+              <div style="background:#FCEBEB;border-radius:var(--border-radius-md);padding:8px 4px;">
+                <p style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:500;color:#A32D2D;">1</p>
+                <p style="font-size:10px;color:#A32D2D;letter-spacing:-0.01em;">위험</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>

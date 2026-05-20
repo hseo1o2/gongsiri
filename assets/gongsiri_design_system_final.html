@@ -1,0 +1,367 @@
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+KR:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;}
+.root{font-family:'Noto Sans KR',sans-serif;color:var(--color-text-primary);padding:2rem 0 3rem;letter-spacing:-0.03em;}
+.section{margin-bottom:2.5rem;}
+.section-label{font-size:11px;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;color:var(--color-text-tertiary);margin-bottom:1rem;padding-bottom:6px;border-bottom:0.5px solid var(--color-border-tertiary);}
+
+/* BRAND */
+.brand-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.logo-block{display:flex;align-items:center;gap:10px;background:#0A0F1C;border-radius:var(--border-radius-lg);padding:16px 22px;}
+.logo-block-light{background:#F4F7FF;border:0.5px solid #D0DCF5;}
+.logo-icon{width:30px;height:30px;flex-shrink:0;}
+.wm{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:-0.07em;color:#E8F4FF;line-height:1;}
+.wm-light{color:#0A0F1C;}
+.wm-accent{color:#3B8BFF;}
+.wm-accent-light{color:#185FA5;}
+.wm-sub{font-size:11px;letter-spacing:0.07em;color:#444441;margin-left:8px;align-self:flex-end;padding-bottom:2px;}
+.wm-sub-dark{color:#5F5E5A;}
+.ctag{font-size:12px;color:var(--color-text-secondary);background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:4px 10px;letter-spacing:-0.01em;}
+
+/* PALETTE */
+.pal-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:10px;}
+.sw{border-radius:var(--border-radius-md);overflow:hidden;border:0.5px solid var(--color-border-tertiary);}
+.sw-bar{height:52px;display:flex;align-items:flex-end;padding:5px 7px;font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:500;}
+.sw-info{background:var(--color-background-primary);padding:7px 8px;}
+.sw-name{font-size:12px;font-weight:500;letter-spacing:-0.03em;}
+.sw-role{font-size:10px;color:var(--color-text-tertiary);margin-top:1px;letter-spacing:-0.01em;}
+
+/* TYPOGRAPHY */
+.type-stack{display:flex;flex-direction:column;gap:14px;}
+.type-row{display:grid;grid-template-columns:170px 1fr;gap:12px;align-items:baseline;}
+.type-meta{font-size:10.5px;color:var(--color-text-tertiary);font-family:'IBM Plex Mono',monospace;letter-spacing:0;}
+.t-display{font-family:'Bebas Neue',sans-serif;font-size:36px;letter-spacing:-0.07em;line-height:1;color:var(--color-text-primary);}
+.t-h1{font-size:20px;font-weight:700;letter-spacing:-0.04em;color:var(--color-text-primary);}
+.t-h2{font-size:16px;font-weight:500;letter-spacing:-0.03em;color:var(--color-text-primary);}
+.t-body{font-size:14px;font-weight:400;letter-spacing:-0.03em;line-height:1.65;color:var(--color-text-primary);}
+.t-cap{font-size:11px;letter-spacing:-0.01em;color:var(--color-text-tertiary);}
+.t-mono{font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:0;color:#3B8BFF;background:#EBF2FF;padding:2px 7px;border-radius:4px;}
+
+/* COMPONENTS */
+.comp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;}
+.comp-card{background:var(--color-background-secondary);border-radius:var(--border-radius-lg);padding:14px;}
+.comp-lbl{font-size:10px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-text-tertiary);margin-bottom:10px;}
+
+/* Risk badges */
+.badge{display:inline-flex;align-items:center;gap:6px;border-radius:100px;font-size:12px;font-weight:500;padding:4px 12px;letter-spacing:-0.02em;}
+.b-safe{background:#EAF3DE;color:#3B6D11;}
+.b-warn{background:#FAEEDA;color:#854F0B;}
+.b-danger{background:#FCEBEB;color:#A32D2D;}
+.bdot{width:6px;height:6px;border-radius:50%;}
+.d-safe{background:#639922;}.d-warn{background:#BA7517;}.d-danger{background:#E24B4A;}
+
+/* Alert */
+.alert{border-radius:var(--border-radius-lg);padding:12px 14px;border-left:3px solid;border-radius:0;}
+.a-warn{background:#FAEEDA;border-color:#BA7517;}
+.a-danger{background:#FCEBEB;border-color:#E24B4A;}
+.a-title{font-size:13px;font-weight:500;letter-spacing:-0.03em;margin-bottom:3px;}
+.a-warn .a-title{color:#633806;}.a-danger .a-title{color:#791F1F;}
+.a-body{font-size:12px;letter-spacing:-0.02em;line-height:1.5;}
+.a-warn .a-body{color:#854F0B;}.a-danger .a-body{color:#A32D2D;}
+
+/* Stock card */
+.stock-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:14px 16px;}
+.s-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;}
+.s-name{font-size:14px;font-weight:500;letter-spacing:-0.03em;}
+.s-code{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--color-text-tertiary);letter-spacing:0;}
+.s-price{font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:500;letter-spacing:-0.02em;}
+.s-up{color:#E24B4A;font-family:'IBM Plex Mono',monospace;font-size:12px;}
+.bar-wrap{margin-top:10px;border-top:0.5px solid var(--color-border-tertiary);padding-top:10px;}
+.bar-meta{display:flex;justify-content:space-between;font-size:11px;color:var(--color-text-tertiary);margin-bottom:5px;letter-spacing:-0.01em;}
+.bar-bg{height:4px;background:var(--color-background-secondary);border-radius:100px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:100px;}
+
+/* Checklist */
+.check-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:13px;letter-spacing:-0.03em;}
+.check-row:last-child{border-bottom:none;}
+.check-icon{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:10px;}
+.ci-pass{background:#EAF3DE;color:#3B6D11;}.ci-fail{background:#FCEBEB;color:#A32D2D;}.ci-na{background:var(--color-background-secondary);color:var(--color-text-tertiary);}
+.check-val{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--color-text-tertiary);letter-spacing:0;}
+
+/* Nav */
+.nav{display:flex;gap:3px;background:var(--color-background-secondary);padding:3px;border-radius:var(--border-radius-md);width:fit-content;}
+.nav-tab{font-size:13px;font-weight:400;letter-spacing:-0.03em;padding:5px 14px;border-radius:6px;color:var(--color-text-secondary);border:none;background:transparent;cursor:pointer;}
+.nav-tab.on{background:var(--color-background-primary);color:var(--color-text-primary);font-weight:500;box-shadow:0 0 0 0.5px var(--color-border-secondary);}
+
+/* Input */
+.inp-wrap{position:relative;width:100%;}
+.inp{width:100%;height:40px;padding:0 12px 0 36px;font-size:14px;font-family:'Noto Sans KR',sans-serif;letter-spacing:-0.03em;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary);outline:none;}
+.inp-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--color-text-tertiary);font-size:16px;pointer-events:none;}
+
+/* Buttons */
+.btn-p{display:inline-flex;align-items:center;gap:6px;background:#0A0F1C;color:#E8F4FF;font-size:13px;font-weight:500;letter-spacing:-0.02em;font-family:'Noto Sans KR',sans-serif;padding:8px 16px;border:none;border-radius:var(--border-radius-md);cursor:pointer;}
+.btn-s{display:inline-flex;align-items:center;gap:6px;background:transparent;color:var(--color-text-primary);font-size:13px;font-weight:400;letter-spacing:-0.02em;font-family:'Noto Sans KR',sans-serif;padding:8px 16px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);cursor:pointer;}
+
+/* Metrics */
+.met-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.met{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px 12px;}
+.met-val{font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:500;letter-spacing:-0.03em;}
+.met-lbl{font-size:11px;color:var(--color-text-tertiary);margin-top:2px;letter-spacing:-0.01em;}
+
+/* Layout preview */
+.layout-shell{display:grid;grid-template-columns:210px 1fr;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden;}
+.side{background:#0A0F1C;padding:16px;}
+.side-lbl{color:#B5D4F4;font-size:10px;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:14px;}
+.side-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;margin-bottom:2px;}
+.side-item.on{background:#1A2235;}
+.si-label{font-size:13px;letter-spacing:-0.03em;}
+.si-on{color:#E8F4FF;font-weight:500;}
+.si-off{color:#888780;}
+.main-area{background:var(--color-background-secondary);padding:16px;}
+.main-lbl{font-size:10px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-text-tertiary);margin-bottom:12px;}
+.main-cards{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+.mini-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px 12px;height:54px;}
+.mini-val{font-family:'IBM Plex Mono',monospace;font-size:17px;font-weight:500;letter-spacing:-0.02em;}
+.mini-lbl{font-size:10px;color:var(--color-text-tertiary);letter-spacing:-0.01em;}
+.main-list{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:12px;display:flex;align-items:center;gap:10px;}
+</style>
+
+<div class="root">
+  <h2 class="sr-only">공시리 최종 디자인 시스템</h2>
+
+  <!-- BRAND -->
+  <div class="section">
+    <p class="section-label">Brand Identity — C안 확정</p>
+    <div class="brand-row">
+      <div class="logo-block">
+        <svg class="logo-icon" viewBox="0 0 30 30" fill="none">
+          <path d="M4 22 L15 7 L26 22" stroke="#3B8BFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M8 18 L22 18" stroke="#3B8BFF" stroke-width="1.6" stroke-linecap="round" opacity="0.4"/>
+          <circle cx="15" cy="7" r="2.2" fill="#E24B4A"/>
+        </svg>
+        <span class="wm">공시리<span class="wm-accent">.</span></span>
+        <span class="wm-sub-dark">DISCLOSURE AI</span>
+      </div>
+      <div class="logo-block logo-block-light">
+        <svg class="logo-icon" viewBox="0 0 30 30" fill="none">
+          <path d="M4 22 L15 7 L26 22" stroke="#185FA5" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M8 18 L22 18" stroke="#185FA5" stroke-width="1.6" stroke-linecap="round" opacity="0.4"/>
+          <circle cx="15" cy="7" r="2.2" fill="#E24B4A"/>
+        </svg>
+        <span class="wm wm-light">공시리<span class="wm-accent-light">.</span></span>
+        <span class="wm-sub">DISCLOSURE AI</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+      <span class="ctag">Bebas Neue · −0.07em</span>
+      <span class="ctag">본문 Noto Sans KR · −0.03em</span>
+      <span class="ctag">수치 IBM Plex Mono</span>
+      <span class="ctag">Navy #0A0F1C · Blue #3B8BFF · Red #E24B4A</span>
+    </div>
+  </div>
+
+  <!-- PALETTE -->
+  <div class="section">
+    <p class="section-label">Color System</p>
+    <div class="pal-grid">
+      <div class="sw">
+        <div class="sw-bar" style="background:#0A0F1C;color:#B5D4F4;">#0A0F1C</div>
+        <div class="sw-info"><p class="sw-name">Navy Black</p><p class="sw-role">Primary / Logo</p></div>
+      </div>
+      <div class="sw">
+        <div class="sw-bar" style="background:#3B8BFF;color:#E6F1FB;">#3B8BFF</div>
+        <div class="sw-info"><p class="sw-name">Signal Blue</p><p class="sw-role">링크 · 인터랙티브</p></div>
+      </div>
+      <div class="sw">
+        <div class="sw-bar" style="background:#E24B4A;color:#FCEBEB;">#E24B4A</div>
+        <div class="sw-info"><p class="sw-name">Alert Red</p><p class="sw-role">위험 · 상승</p></div>
+      </div>
+      <div class="sw">
+        <div class="sw-bar" style="background:#BA7517;color:#FAEEDA;">#BA7517</div>
+        <div class="sw-info"><p class="sw-name">Caution Amber</p><p class="sw-role">주의 신호</p></div>
+      </div>
+      <div class="sw">
+        <div class="sw-bar" style="background:#639922;color:#EAF3DE;">#639922</div>
+        <div class="sw-info"><p class="sw-name">Safe Green</p><p class="sw-role">정상 · 통과</p></div>
+      </div>
+      <div class="sw">
+        <div class="sw-bar" style="background:#5F5E5A;color:#F1EFE8;">#5F5E5A</div>
+        <div class="sw-info"><p class="sw-name">Neutral Gray</p><p class="sw-role">보조 · 비활성</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TYPOGRAPHY -->
+  <div class="section">
+    <p class="section-label">Typography</p>
+    <div class="type-stack">
+      <div class="type-row">
+        <span class="type-meta">Display / Bebas −0.07em</span>
+        <span class="t-display">공시리 AI Agent</span>
+      </div>
+      <div class="type-row">
+        <span class="type-meta">H1 / 700 20px −0.04em</span>
+        <span class="t-h1">작전주 위험 감지 리포트</span>
+      </div>
+      <div class="type-row">
+        <span class="type-meta">H2 / 500 16px −0.03em</span>
+        <span class="t-h2">최근 공시 3건 · CB 발행 이력 확인</span>
+      </div>
+      <div class="type-row">
+        <span class="type-meta">Body / 400 14px −0.03em</span>
+        <span class="t-body">공시에 기반한 위험 시그널을 분석합니다. 투자 자문이 아니며 참고용으로만 활용하세요.</span>
+      </div>
+      <div class="type-row">
+        <span class="type-meta">Mono / IBM Plex</span>
+        <span class="t-mono">CB_ISSUE_COUNT: 3</span>
+      </div>
+      <div class="type-row">
+        <span class="type-meta">Caption / 11px −0.01em</span>
+        <span class="t-cap">DART 공시 기준 · 2025.05.11 09:30 업데이트</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPONENTS -->
+  <div class="section">
+    <p class="section-label">Core Components</p>
+    <div class="comp-grid">
+
+      <div class="comp-card">
+        <p class="comp-lbl">Risk Badge</p>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <span class="badge b-safe"><span class="bdot d-safe"></span>안전 0–1점</span>
+          <span class="badge b-warn"><span class="bdot d-warn"></span>주의 2–3점</span>
+          <span class="badge b-danger"><span class="bdot d-danger"></span>위험 4점 이상</span>
+        </div>
+      </div>
+
+      <div class="comp-card">
+        <p class="comp-lbl">Alert Card</p>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div class="alert a-warn">
+            <p class="a-title">CB 3회 발행 감지</p>
+            <p class="a-body">자기자본 대비 38% 초과 — 주의 판정</p>
+          </div>
+          <div class="alert a-danger">
+            <p class="a-title">작전주 징후 4점 이상</p>
+            <p class="a-body">경고 알림 즉시 발송됨</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="comp-card">
+        <p class="comp-lbl">Stock Card</p>
+        <div class="stock-card">
+          <div class="s-head">
+            <div><p class="s-name">카카오</p><p class="s-code">035720 · KOSPI</p></div>
+            <span class="badge b-warn" style="font-size:11px;padding:3px 8px;"><span class="bdot d-warn"></span>주의</span>
+          </div>
+          <p class="s-price">42,650<span style="font-size:12px;color:var(--color-text-tertiary);font-family:'IBM Plex Mono',monospace;">원</span></p>
+          <span class="s-up">▲ 1.2%</span>
+          <div class="bar-wrap">
+            <div class="bar-meta"><span>작전주 지수</span><span>2 / 6</span></div>
+            <div class="bar-bg"><div class="bar-fill" style="width:33%;background:#BA7517;"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="comp-card">
+        <p class="comp-lbl">6-Point Checklist</p>
+        <div>
+          <div class="check-row">
+            <div class="check-icon ci-pass"><i class="ti ti-check" style="font-size:11px;" aria-hidden="true"></i></div>
+            <span style="flex:1;">사업목적 전환 이력</span>
+            <span class="check-val">0회</span>
+          </div>
+          <div class="check-row">
+            <div class="check-icon ci-fail"><i class="ti ti-x" style="font-size:11px;" aria-hidden="true"></i></div>
+            <span style="flex:1;">CB 발행 이력</span>
+            <span class="check-val">3회</span>
+          </div>
+          <div class="check-row">
+            <div class="check-icon ci-fail"><i class="ti ti-x" style="font-size:11px;" aria-hidden="true"></i></div>
+            <span style="flex:1;">최대주주 변경</span>
+            <span class="check-val">2회</span>
+          </div>
+          <div class="check-row">
+            <div class="check-icon ci-pass"><i class="ti ti-check" style="font-size:11px;" aria-hidden="true"></i></div>
+            <span style="flex:1;">비정상 주가 급등</span>
+            <span class="check-val">없음</span>
+          </div>
+          <div class="check-row">
+            <div class="check-icon ci-na" style="font-size:12px;">–</div>
+            <span style="flex:1;">핫 테마 후행 참여</span>
+            <span class="check-val">확인불가</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="comp-card">
+        <p class="comp-lbl">Navigation</p>
+        <div class="nav">
+          <button class="nav-tab on">대시보드</button>
+          <button class="nav-tab">워치리스트</button>
+          <button class="nav-tab">리포트</button>
+        </div>
+      </div>
+
+      <div class="comp-card">
+        <p class="comp-lbl">Input / Button</p>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div class="inp-wrap">
+            <i class="ti ti-search inp-icon" aria-hidden="true"></i>
+            <input class="inp" type="text" placeholder="종목명 또는 코드 검색" />
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn-p"><i class="ti ti-bell" aria-hidden="true"></i>공시 체크</button>
+            <button class="btn-s"><i class="ti ti-plus" aria-hidden="true"></i>종목 추가</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- METRICS -->
+  <div class="section">
+    <p class="section-label">Metric Cards</p>
+    <div class="met-grid">
+      <div class="met"><p class="met-val">12</p><p class="met-lbl">모니터링 종목</p></div>
+      <div class="met"><p class="met-val" style="color:#E24B4A;">3</p><p class="met-lbl">오늘 신규 공시</p></div>
+      <div class="met"><p class="met-val" style="color:#BA7517;">1</p><p class="met-lbl">주의 종목</p></div>
+    </div>
+  </div>
+
+  <!-- LAYOUT -->
+  <div class="section">
+    <p class="section-label">Layout Shell</p>
+    <div class="layout-shell">
+      <div class="side">
+        <p class="side-lbl">메뉴</p>
+        <div class="side-item on">
+          <i class="ti ti-layout-dashboard" style="color:#3B8BFF;font-size:15px;" aria-hidden="true"></i>
+          <span class="si-label si-on">대시보드</span>
+        </div>
+        <div class="side-item">
+          <i class="ti ti-eye" style="color:#5F5E5A;font-size:15px;" aria-hidden="true"></i>
+          <span class="si-label si-off">워치리스트</span>
+        </div>
+        <div class="side-item">
+          <i class="ti ti-file-analytics" style="color:#5F5E5A;font-size:15px;" aria-hidden="true"></i>
+          <span class="si-label si-off">리포트</span>
+        </div>
+        <div class="side-item">
+          <i class="ti ti-chart-bar" style="color:#5F5E5A;font-size:15px;" aria-hidden="true"></i>
+          <span class="si-label si-off">포트폴리오</span>
+        </div>
+      </div>
+      <div class="main-area">
+        <p class="main-lbl">메인 콘텐츠 영역</p>
+        <div class="main-cards">
+          <div class="mini-card"><p class="mini-val">12</p><p class="mini-lbl">모니터링 종목</p></div>
+          <div class="mini-card"><p class="mini-val" style="color:#E24B4A;">3</p><p class="mini-lbl">오늘 공시 알림</p></div>
+        </div>
+        <div class="main-list">
+          <i class="ti ti-chart-line" style="color:#3B8BFF;font-size:18px;" aria-hidden="true"></i>
+          <div>
+            <p style="font-size:13px;font-weight:500;letter-spacing:-0.03em;">종목 카드 리스트 / 리포트 섹션</p>
+            <p style="font-size:11px;color:var(--color-text-tertiary);letter-spacing:-0.01em;">종목별 공시 요약 + 리스크 점수</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
