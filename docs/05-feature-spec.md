@@ -48,3 +48,21 @@ Make Pi SDK the heart of Gongsiri for one manual disclosure-intake path.
 - Python tests for bridge/resolution behavior
 - one local manual smoke run
 - proof of no `assets/stock_master.json` mutation
+
+## G002 — Pi Agent Cron
+
+### Goal
+Extend the bootstrap runtime with `user | system | cron` trigger semantics, a manual trigger surface, and local checkpoint-based new disclosure detection.
+
+### In Scope
+- trigger contract extension
+- manual trigger CLI/runtime path
+- scheduler/cron surface in `agent/`
+- local ignored checkpoint state
+- deterministic trigger/checkpoint tests
+
+### Out of Scope
+- frontend UI
+- DB persistence
+- notifications
+- broad pipeline integration

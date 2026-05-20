@@ -53,3 +53,17 @@ Responsibilities:
 - no tracked asset mutation during runtime fetch
 - `backend/main.py` remains passive and separate from Pi hosting
 - observability requires `traceId`, `contractVersion`, `observedAt`, and evidence propagation
+
+## G002 Trigger Architecture Addendum
+
+### New runtime components
+- `agent/src/triggers/` — typed trigger normalization and checkpoint-aware execution
+- `agent/src/state/` — ignored local checkpoint store for last-seen disclosure IDs
+- `agent/src/scheduler/` — cron-oriented orchestration surface that delegates to the same trigger runtime
+- `agent/src/cli/` — one-off/manual trigger entrypoint
+
+### G002 rules
+- checkpoint identity is canonicalized to resolved `corpCode`
+- failed runs do not advance checkpoint state
+- cron/manual/system triggers all reuse the same Python bridge path
+- G002 remains runtime-only and does not add frontend, DB, or notification components

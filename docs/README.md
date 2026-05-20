@@ -9,3 +9,7 @@ Pi bootstrap milestone의 repo-local source of truth 문서:
 - `05-feature-spec.md` — PR1 feature scope, acceptance criteria, out-of-scope
 - `06-pi-agent-architecture.md` — Pi runtime/skill/tool/Python bridge architecture
 - `07-pi-agent-contracts.md` — Pi request/response/tool/failure envelope contract
+
+현재 milestone 확장:
+- G001 — bootstrap runtime + disclosure bridge
+- G002 — trigger source(`user | system | cron`) + manual trigger + scheduler surface + local checkpoint detection
