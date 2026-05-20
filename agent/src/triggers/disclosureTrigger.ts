@@ -19,10 +19,11 @@ import {
 const VALID_SOURCES: TriggerSource[] = ["user", "system", "cron"];
 
 const buildCheckpoint = (
+  checkpointPath: string,
   previousLastSeen: string | null,
   currentLastSeen: string | null
 ): TriggerCheckpoint => ({
-  checkpointPath: resolveCheckpointPath(),
+  checkpointPath,
   previousLastSeen,
   currentLastSeen
 });
@@ -30,7 +31,8 @@ const buildCheckpoint = (
 const buildFailureResult = (
   request: DisclosureTriggerRequest,
   result: ToolResultFailure,
-  previousLastSeen: string | null
+  previousLastSeen: string | null,
+  checkpointPath: string
 ): TriggeredDisclosureResult => ({
   ok: false,
   triggerSource: request.source,
@@ -39,7 +41,7 @@ const buildFailureResult = (
   hasNewDisclosure: false,
   newDisclosureCount: 0,
   newDisclosureIds: [],
-  checkpoint: buildCheckpoint(previousLastSeen, previousLastSeen),
+  checkpoint: buildCheckpoint(checkpointPath, previousLastSeen, previousLastSeen),
   result
 });
 
@@ -119,7 +121,7 @@ export const runTriggeredDisclosureCheck = async (
   const result = await tool.invoke(request);
 
   if (!result.ok) {
-    return buildFailureResult(request, result, previousLastSeen);
+    return buildFailureResult(request, result, previousLastSeen, checkpointStore.checkpointPath);
   }
 
   const currentLastSeen = resolveCurrentLastSeen(result);
@@ -138,7 +140,7 @@ export const runTriggeredDisclosureCheck = async (
     hasNewDisclosure,
     newDisclosureCount: newDisclosureIds.length,
     newDisclosureIds,
-    checkpoint: buildCheckpoint(previousLastSeen, currentLastSeen),
+    checkpoint: buildCheckpoint(checkpointStore.checkpointPath, previousLastSeen, currentLastSeen),
     result
   };
 };
