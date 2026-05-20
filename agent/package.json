@@ -8,7 +8,8 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "npm run build && node --test test/**/*.test.mjs",
-    "trigger": "npm run build && node dist/cli/runDisclosureTrigger.js"
+    "trigger": "npm run build && node dist/cli/runDisclosureTrigger.js",
+    "pipeline": "npm run build && node dist/cli/runPipelineTrigger.js"
   },
   "devDependencies": {
     "typescript": "^5.9.3"

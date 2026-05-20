@@ -104,6 +104,21 @@ def find_in_local_master(keyword: str, *, create_if_missing: bool = True) -> Com
     return None
 
 
+def find_by_corp_code(corp_code: str, *, create_if_missing: bool = True) -> CompanyInfo | None:
+    normalized = corp_code.strip()
+
+    if not normalized:
+        return None
+
+    stock_master = load_stock_master(create_if_missing=create_if_missing)
+
+    for info in stock_master.values():
+        if info.get("corp_code") == normalized:
+            return CompanyInfo(**info)
+
+    return None
+
+
 def parse_kskill_item(item: dict[str, Any], fallback_name: str) -> CompanyInfo:
     """
     k-skill 응답 포맷 차이를 흡수해서 CompanyInfo로 변환한다.
