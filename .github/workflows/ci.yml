@@ -34,8 +34,6 @@ jobs:
         with:
           python-version: "3.11"
       - uses: astral-sh/setup-uv@v4
-        with:
-          enable-cache: true
       - run: uv tool install ruff
       - run: ruff check backend/
       - run: ruff format --check backend/
