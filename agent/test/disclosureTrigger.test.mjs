@@ -92,7 +92,8 @@ test("first successful trigger initializes checkpoint without reporting all disc
   assert.equal(result.newDisclosureCount, 0);
   assert.equal(result.checkpoint.previousLastSeen, null);
   assert.equal(result.checkpoint.currentLastSeen, "202605200002");
-  assert.equal(checkpointStore.read("카카오"), "202605200002");
+  assert.equal(checkpointStore.read("00258801"), "202605200002");
+  assert.equal(checkpointStore.read("카카오"), null);
 });
 
 test("subsequent successful trigger reports only unseen disclosures", async () => {
@@ -139,7 +140,7 @@ test("subsequent successful trigger reports only unseen disclosures", async () =
   assert.deepEqual(result.newDisclosureIds, ["202605200004", "202605200003"]);
   assert.equal(result.checkpoint.previousLastSeen, "202605200002");
   assert.equal(result.checkpoint.currentLastSeen, "202605200004");
-  assert.equal(checkpointStore.read("카카오"), "202605200004");
+  assert.equal(checkpointStore.read("00258801"), "202605200004");
 });
 
 test("failed trigger does not advance checkpoint", async () => {
@@ -179,6 +180,124 @@ test("failed trigger does not advance checkpoint", async () => {
   assert.equal(result.ok, false);
   assert.equal(result.hasNewDisclosure, false);
   assert.equal(checkpointStore.read("카카오"), "202605200004");
+});
+
+test("keyword then corpCode runs share the same checkpoint continuity", async () => {
+  const checkpointPath = makeCheckpointPath();
+  const checkpointStore = new LocalDisclosureCheckpointStore(checkpointPath);
+
+  await runTriggeredDisclosureCheck(
+    createDisclosureTriggerRequest({
+      source: "user",
+      keyword: "카카오",
+      traceId: "keyword-first"
+    }),
+    {
+      checkpointStore,
+      tool: {
+        descriptor: {
+          name: "fetch_disclosures",
+          description: "stub",
+          canonicalCommand: "python -m backend.collector.cli.fetch_disclosures"
+        },
+        invoke: async () => ({
+          ok: true,
+          traceId: "keyword-first",
+          contractVersion: "v1",
+          observedAt: "2026-05-20T12:50:00Z",
+          data: {
+            corpCode: "00258801",
+            company: null,
+            disclosures: [{ rcept_no: "202605200020", report_nm: "사업보고서", rcept_dt: "20260520" }]
+          },
+          evidence: []
+        })
+      }
+    }
+  );
+
+  const result = await runTriggeredDisclosureCheck(
+    createDisclosureTriggerRequest({
+      source: "cron",
+      corpCode: "00258801",
+      traceId: "corpcode-second"
+    }),
+    {
+      checkpointStore,
+      tool: {
+        descriptor: {
+          name: "fetch_disclosures",
+          description: "stub",
+          canonicalCommand: "python -m backend.collector.cli.fetch_disclosures"
+        },
+        invoke: async () => ({
+          ok: true,
+          traceId: "corpcode-second",
+          contractVersion: "v1",
+          observedAt: "2026-05-20T13:00:00Z",
+          data: {
+            corpCode: "00258801",
+            company: null,
+            disclosures: [
+              { rcept_no: "202605200021", report_nm: "신규 공시", rcept_dt: "20260520" },
+              { rcept_no: "202605200020", report_nm: "사업보고서", rcept_dt: "20260520" }
+            ]
+          },
+          evidence: []
+        })
+      }
+    }
+  );
+
+  assert.equal(result.ok, true);
+  assert.equal(result.checkpoint.previousLastSeen, "202605200020");
+  assert.equal(result.hasNewDisclosure, true);
+  assert.deepEqual(result.newDisclosureIds, ["202605200021"]);
+});
+
+test("corpCode then keyword runs share the same checkpoint continuity", async () => {
+  const checkpointPath = makeCheckpointPath();
+  const checkpointStore = new LocalDisclosureCheckpointStore(checkpointPath);
+  checkpointStore.write("00258801", "202605200030");
+
+  const result = await runTriggeredDisclosureCheck(
+    createDisclosureTriggerRequest({
+      source: "system",
+      keyword: "카카오",
+      traceId: "keyword-second"
+    }),
+    {
+      checkpointStore,
+      tool: {
+        descriptor: {
+          name: "fetch_disclosures",
+          description: "stub",
+          canonicalCommand: "python -m backend.collector.cli.fetch_disclosures"
+        },
+        invoke: async () => ({
+          ok: true,
+          traceId: "keyword-second",
+          contractVersion: "v1",
+          observedAt: "2026-05-20T13:10:00Z",
+          data: {
+            corpCode: "00258801",
+            company: null,
+            disclosures: [
+              { rcept_no: "202605200031", report_nm: "신규 공시", rcept_dt: "20260520" },
+              { rcept_no: "202605200030", report_nm: "사업보고서", rcept_dt: "20260520" }
+            ]
+          },
+          evidence: []
+        })
+      }
+    }
+  );
+
+  assert.equal(result.ok, true);
+  assert.equal(result.checkpoint.previousLastSeen, "202605200030");
+  assert.equal(result.hasNewDisclosure, true);
+  assert.deepEqual(result.newDisclosureIds, ["202605200031"]);
+  assert.equal(checkpointStore.read("00258801"), "202605200031");
 });
 
 test("scheduler runOnce always sends cron source", async () => {
@@ -264,7 +383,10 @@ printf '%s\n' '{"ok":true,"traceId":"cli-trace","contractVersion":"v1","observed
     assert.equal(parsed.traceId, "cli-trace");
     assert.equal(parsed.hasNewDisclosure, false);
     assert.equal(existsSync(checkpointPath), true);
-    assert.equal(JSON.parse(readFileSync(checkpointPath, "utf-8")).disclosures["카카오"], "202605200010");
+    assert.equal(
+      JSON.parse(readFileSync(checkpointPath, "utf-8")).disclosures["00258801"],
+      "202605200010"
+    );
   } finally {
     cleanup();
     rmSync(checkpointPath.replace(/\/checkpoints\.json$/, ""), { recursive: true, force: true });

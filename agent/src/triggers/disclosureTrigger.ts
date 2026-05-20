@@ -69,6 +69,46 @@ const collectNewDisclosureIds = (
 const resolveCurrentLastSeen = (result: ToolResultSuccess): string | null =>
   result.data.disclosures[0]?.rcept_no ?? null;
 
+const resolveRequestKey = (request: DisclosureTriggerRequest): string | null =>
+  request.corpCode ?? request.keyword ?? null;
+
+const resolveCanonicalCorpCode = (
+  request: DisclosureTriggerRequest,
+  result: ToolResultSuccess
+): string =>
+  result.data.corpCode || request.corpCode || request.keyword || "unknown";
+
+const readPreviousLastSeen = (
+  checkpointStore: LocalDisclosureCheckpointStore,
+  canonicalKey: string,
+  requestKey: string | null
+): { previousLastSeen: string | null; migratedFromRequestKey: boolean } => {
+  const canonicalCheckpoint = checkpointStore.read(canonicalKey);
+
+  if (canonicalCheckpoint) {
+    return {
+      previousLastSeen: canonicalCheckpoint,
+      migratedFromRequestKey: false
+    };
+  }
+
+  if (requestKey && requestKey !== canonicalKey) {
+    const legacyCheckpoint = checkpointStore.read(requestKey);
+
+    if (legacyCheckpoint) {
+      return {
+        previousLastSeen: legacyCheckpoint,
+        migratedFromRequestKey: true
+      };
+    }
+  }
+
+  return {
+    previousLastSeen: null,
+    migratedFromRequestKey: false
+  };
+};
+
 export const createDisclosureTriggerRequest = (
   input: DisclosureTriggerInput
 ): DisclosureTriggerRequest => {
@@ -116,20 +156,35 @@ export const runTriggeredDisclosureCheck = async (
 ): Promise<TriggeredDisclosureResult> => {
   const tool = options.tool ?? fetchDisclosuresTool;
   const checkpointStore = options.checkpointStore ?? new LocalDisclosureCheckpointStore();
-  const lookupKey = request.corpCode ?? request.keyword ?? "unknown";
-  const previousLastSeen = checkpointStore.read(lookupKey);
+  const requestKey = resolveRequestKey(request);
+  const fallbackPreviousLastSeen = requestKey ? checkpointStore.read(requestKey) : null;
   const result = await tool.invoke(request);
 
   if (!result.ok) {
-    return buildFailureResult(request, result, previousLastSeen, checkpointStore.checkpointPath);
+    return buildFailureResult(
+      request,
+      result,
+      fallbackPreviousLastSeen,
+      checkpointStore.checkpointPath
+    );
   }
 
+  const canonicalKey = resolveCanonicalCorpCode(request, result);
+  const { previousLastSeen, migratedFromRequestKey } = readPreviousLastSeen(
+    checkpointStore,
+    canonicalKey,
+    requestKey
+  );
   const currentLastSeen = resolveCurrentLastSeen(result);
   const newDisclosureIds = collectNewDisclosureIds(result.data.disclosures, previousLastSeen);
   const hasNewDisclosure = previousLastSeen ? newDisclosureIds.length > 0 : false;
 
   if (currentLastSeen) {
-    checkpointStore.write(lookupKey, currentLastSeen);
+    checkpointStore.write(canonicalKey, currentLastSeen);
+
+    if (migratedFromRequestKey && requestKey && requestKey !== canonicalKey) {
+      checkpointStore.delete(requestKey);
+    }
   }
 
   return {

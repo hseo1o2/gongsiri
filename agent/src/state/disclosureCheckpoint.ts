@@ -40,6 +40,12 @@ export class LocalDisclosureCheckpointStore {
     this.saveState(nextState);
   }
 
+  delete(corpCode: string): void {
+    const nextState = this.loadState();
+    delete nextState.disclosures[corpCode];
+    this.saveState(nextState);
+  }
+
   private loadState(): DisclosureCheckpointState {
     if (!existsSync(this.checkpointPath)) {
       return createEmptyState();
