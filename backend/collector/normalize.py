@@ -7,32 +7,72 @@ from backend.collector.document_parse import parse_local_report_files
 from backend.collector.krx.search import search_stock
 from backend.collector.krx.trade_info import get_trade_info
 from backend.collector.naver.news import fetch_news_docs
+from backend.collector.report_downloader import download_pdf_reports_from_candidates
+from backend.collector.report_finder import search_report_urls
 from backend.schemas.bundle import NormalizedDataBundle
 
 
+def is_valid_pdf_file(file_path: str) -> bool:
+    path = Path(file_path)
+
+    if not path.exists() or path.suffix.lower() != ".pdf":
+        return False
+
+    try:
+        with open(path, "rb") as f:
+            return f.read(4) == b"%PDF"
+    except Exception:
+        return False
+
+
 def get_local_report_files(report_dir: str = "data/reports") -> list[str]:
-    """
-    data/reports 폴더에 있는 PDF/이미지 파일 목록을 반환.
-    """
     path = Path(report_dir)
 
     if not path.exists():
         return []
 
-    allowed_extensions = {".pdf", ".png", ".jpg", ".jpeg"}
+    valid_files = []
 
-    return [
-        str(file)
-        for file in path.glob("*")
-        if file.is_file() and file.suffix.lower() in allowed_extensions
-    ]
+    for file in path.glob("*"):
+        if not file.is_file():
+            continue
+
+        if file.suffix.lower() not in {".pdf", ".png", ".jpg", ".jpeg"}:
+            continue
+
+        if file.suffix.lower() == ".pdf" and not is_valid_pdf_file(str(file)):
+            file.unlink(missing_ok=True)
+            continue
+
+        valid_files.append(str(file))
+
+    return valid_files
+
+
+def deduplicate_paths(paths: list[str]) -> list[str]:
+    seen = set()
+    unique_paths = []
+
+    for path in paths:
+        normalized = str(Path(path))
+
+        if normalized in seen:
+            continue
+
+        seen.add(normalized)
+        unique_paths.append(normalized)
+
+    return unique_paths
+
+
+def filter_successful_parsed_reports(parsed_reports):
+    """
+    Upstage 실패 결과는 B팀 입력에서 제외한다.
+    """
+    return [report for report in parsed_reports if not report.source.startswith("UPSTAGE_ERROR")]
 
 
 def build_normalized_bundle(keyword: str) -> NormalizedDataBundle:
-    """
-    종목명 입력 → 공시/재무/시세/뉴스/공시 원문/외부 리포트를 하나의 표준 bundle로 통합.
-    """
-
     missing_fields = []
 
     company = search_stock(keyword)
@@ -70,6 +110,14 @@ def build_normalized_bundle(keyword: str) -> NormalizedDataBundle:
         news_docs = []
         missing_fields.append(f"news_docs: {str(e)}")
 
+    downloaded_report_files = []
+
+    try:
+        report_candidates = search_report_urls(company.corp_name, display=10)
+        downloaded_report_files = download_pdf_reports_from_candidates(report_candidates)
+    except Exception as e:
+        missing_fields.append(f"external_report_download: {str(e)}")
+
     parsed_reports = []
 
     try:
@@ -80,7 +128,11 @@ def build_normalized_bundle(keyword: str) -> NormalizedDataBundle:
 
     try:
         local_report_files = get_local_report_files("data/reports")
-        upstage_parsed_reports = parse_local_report_files(local_report_files, limit=3)
+        all_report_files = deduplicate_paths(local_report_files + downloaded_report_files)
+
+        upstage_parsed_reports = parse_local_report_files(all_report_files, limit=5)
+        upstage_parsed_reports = filter_successful_parsed_reports(upstage_parsed_reports)
+
         parsed_reports.extend(upstage_parsed_reports)
     except Exception as e:
         missing_fields.append(f"upstage_parsed_reports: {str(e)}")
@@ -112,10 +164,6 @@ def save_normalized_bundle(
     bundle: NormalizedDataBundle,
     output_path: str = "data/normalized_data_bundle.json",
 ) -> str:
-    """
-    NormalizedDataBundle을 JSON 파일로 저장.
-    """
-
     output_file = Path(output_path)
     output_file.parent.mkdir(parents=True, exist_ok=True)
 
@@ -134,10 +182,6 @@ def build_and_save_normalized_bundle(
     keyword: str,
     output_path: str = "data/normalized_data_bundle.json",
 ) -> dict:
-    """
-    종목명 입력 → bundle 생성 → JSON 저장까지 한 번에 수행.
-    """
-
     bundle = build_normalized_bundle(keyword)
     saved_path = save_normalized_bundle(bundle, output_path)
 
