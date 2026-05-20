@@ -67,3 +67,22 @@ Responsibilities:
 - failed runs do not advance checkpoint state
 - cron/manual/system triggers all reuse the same Python bridge path
 - G002 remains runtime-only and does not add frontend, DB, or notification components
+
+## G003 Pipeline Architecture Addendum
+
+### New Python components
+- `backend/collector/runtime_normalize.py` — Pi-safe read-only/additive normalization adapter
+- `backend/analyzer/` — deterministic checklist/report orchestration
+- `backend/analyzer/cli/run_pipeline.py` — canonical Python pipeline entrypoint
+
+### New runtime components
+- `agent/src/contracts/pipeline.ts` — pipeline request/result contracts
+- `agent/src/tools/runAnalysisPipeline.ts` — TS wrapper for the Python pipeline command
+- `agent/src/cli/runPipelineTrigger.ts` — one-off pipeline trigger entrypoint
+
+### G003 rules
+- runtime pipeline requests must support both `keyword` and `corpCode`
+- pipeline normalization must not persist new symbols to `assets/stock_master.json`
+- pipeline normalization must not delete local report files
+- analyzer core should stay deterministic first, with any narrative/LLM boundary clearly isolated
+- persistence/notification stay as DTO/port preparation only

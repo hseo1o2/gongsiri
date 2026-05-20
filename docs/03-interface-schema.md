@@ -5,6 +5,7 @@ Python domain payload truth와 Pi runtime envelope truth를 분리해 contract d
 
 ## Authority Split
 - `backend/schemas/bundle.py` owns Python domain models such as `CompanyInfo`, `DisclosureItem`, and `NormalizedDataBundle`.
+- `backend/schemas/analysis.py` owns Python analyzer and preparation-boundary models such as `ChecklistItem`, `AnalysisResult`, `PreparedPersistencePayload`, and `PreparedNotificationPayload`.
 - `docs/07-pi-agent-contracts.md` owns Pi runtime request/response envelopes.
 - TypeScript runtime contracts must reference these docs instead of redefining Python domain truth ad hoc.
 
@@ -92,3 +93,31 @@ Failure envelope:
 - Runtime disclosure fetch must not mutate `assets/stock_master.json`.
 - PR1 read-only resolution uses `backend/collector/company_resolver.py`.
 - Persistent lookup behavior in `backend/collector/krx/search.py` is legacy collector behavior, not the Pi runtime path.
+
+## G003 Analyzer Schema Authority
+Source implementation target: `backend/schemas/analysis.py`
+
+### `ChecklistItem`
+Required fields:
+- `id: str`
+- `title: str`
+- `status: "pass" | "fail" | "unknown"`
+- `score: int`
+- `reason: str`
+- `evidence: list[str]`
+
+### `AnalysisResult`
+Required fields:
+- `risk_score: int`
+- `risk_level: "normal" | "caution" | "high"`
+- `checklist: ChecklistItem[]`
+- `short_term_report: str`
+- `long_term_report: str`
+- `disclaimer: str`
+- `missing_evidence: list[str]`
+
+### Preparation-only boundary payloads
+- `PreparedPersistencePayload`
+- `PreparedNotificationPayload`
+
+These are interface/boundary models only for G003 and must not imply real DB writes or delivery.

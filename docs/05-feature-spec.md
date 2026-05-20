@@ -66,3 +66,28 @@ Extend the bootstrap runtime with `user | system | cron` trigger semantics, a ma
 - DB persistence
 - notifications
 - broad pipeline integration
+
+## G003 — Pi Agent Pipeline
+
+### Goal
+Connect `normalized_data_bundle` to an analyzer phase and expose one Pi-facing pipeline path that returns machine-readable `analysis_result`, while stopping at persistence/notification preparation boundaries.
+
+### In Scope
+- read-only/additive normalization adapter for `keyword` and `corpCode`
+- `backend/analyzer/` orchestration
+- Python pipeline command/bridge
+- Pi runtime pipeline tool/trigger surface
+- persistence/notification payload boundaries only
+- deterministic tests and smoke evidence
+
+### Out of Scope
+- frontend redesign
+- full DB implementation
+- real notification delivery
+- watchlist orchestration
+
+### Acceptance highlights
+- runtime pipeline path supports both `keyword` and `corpCode`
+- pipeline runtime does not mutate tracked assets or delete local report files
+- analyzer output is machine-readable and typed
+- persistence/notification remain preparation-only boundaries

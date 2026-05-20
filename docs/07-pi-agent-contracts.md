@@ -141,3 +141,73 @@ Rules:
 - successful runs may update ignored local checkpoint state
 - failed runs must not advance the checkpoint
 - first successful run initializes checkpoint state without counting all existing disclosures as new
+
+## G003 Pipeline Contract
+
+Tool name: `run_analysis_pipeline`
+
+Accepted request:
+
+```ts
+type PipelineTriggerRequest = {
+  source: "user" | "system" | "cron";
+  keyword?: string;
+  corpCode?: string;
+  traceId?: string;
+  contractVersion?: "v1";
+  metadata?: {
+    intervalMinutes?: number;
+    runReason?: string;
+  };
+};
+```
+
+Rules:
+- at least one of `keyword` or `corpCode` must be present
+- runtime pipeline path must support both request forms
+- pipeline normalization path must be read-only/additive
+
+Returned envelope:
+
+```ts
+type PipelineResult = {
+  ok: boolean;
+  triggerSource: "user" | "system" | "cron";
+  traceId: string;
+  contractVersion: "v1";
+  observedAt: string;
+  result?: {
+    normalizedDataBundle: Record<string, unknown>;
+    analysisResult: {
+      risk_score: number;
+      risk_level: "normal" | "caution" | "high";
+      checklist: Array<{
+        id: string;
+        title: string;
+        status: "pass" | "fail" | "unknown";
+        score: number;
+        reason: string;
+        evidence: string[];
+      }>;
+      short_term_report: string;
+      long_term_report: string;
+      disclaimer: string;
+      missing_evidence: string[];
+    };
+    preparation: {
+      persistence: Record<string, unknown>;
+      notification: Record<string, unknown>;
+    };
+  };
+  error?: {
+    code: string;
+    message: string;
+  };
+  evidence: Array<Record<string, unknown>>;
+};
+```
+
+Rules:
+- stdout must remain JSON-only
+- failures must remain machine-readable
+- preparation payloads are interfaces only and must not trigger real DB writes or notification delivery
