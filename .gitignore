@@ -35,12 +35,7 @@ coverage/
 # Tooling — local override (do not commit)
 lefthook-local.yml
 
-# Agent / Orchestrator state (kept local, not shared)
-# Exception: .omc/wiki/ is team-shared work log
-# NOTE: Use .omc/* (single star), NOT .omc/** (double star).
-# With **, the negation !.omc/wiki/ does not re-include wiki files
-# because ** matches recursively and overrides the negation for nested paths.
-# Single * only matches direct children of .omc/, making !.omc/wiki/ effective.
+# Agent / Orchestrator state — local only; .omc/wiki/ is the team-shared exception
 .omc/*
 !.omc/wiki/
 !.omc/wiki/**
