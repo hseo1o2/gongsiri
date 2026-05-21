@@ -1,16 +1,14 @@
+from json import JSONDecodeError
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
-from backend.analyzer.pipeline import run_pipeline_request
+from backend.analyzer.pipeline import CONTRACT_VERSION, run_pipeline_request
 from backend.collector.normalize import (
     build_and_save_normalized_bundle,
     build_normalized_bundle,
 )
-from backend.schemas.pipeline import PipelineTriggerRequest
-
-
 def _typed_pipeline_failure(code: str, message: str, *, source: str = "user") -> dict[str, Any]:
     return {
         "ok": False,
@@ -42,11 +40,13 @@ async def _read_pipeline_trigger_payload(request: Request) -> tuple[dict[str, An
 
 def _append_route_default_evidence(result: dict[str, Any], default_keyword: str) -> dict[str, Any]:
     evidence = list(result.get("evidence") or [])
-    evidence.append({
-        "source": "pipeline_trigger_route",
-        "defaultUsed": True,
-        "defaultKeyword": default_keyword,
-    })
+    evidence.append(
+        {
+            "source": "pipeline_trigger_route",
+            "defaultUsed": True,
+            "defaultKeyword": default_keyword,
+        }
+    )
     return {**result, "evidence": evidence}
 
 app = FastAPI(title="Gongsiri A Data Pipeline")
