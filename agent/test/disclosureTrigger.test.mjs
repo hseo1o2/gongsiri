@@ -393,151 +393,246 @@ printf '%s\n' '{"ok":true,"traceId":"cli-trace","contractVersion":"v1","observed
   }
 });
 
-test("first cron run initializes checkpoint without invoking pipeline for historical disclosures", async () => {
+
+const makeFetchTool = (invoke) => ({
+  descriptor: {
+    name: "fetch_disclosures",
+    description: "stub",
+    canonicalCommand: "python -m backend.collector.cli.fetch_disclosures"
+  },
+  invoke
+});
+
+const makeFetchSuccess = ({ traceId, corpCode = "00258801", disclosures }) => ({
+  ok: true,
+  traceId,
+  contractVersion: "v1",
+  observedAt: "2026-05-20T14:00:00Z",
+  data: {
+    corpCode,
+    company: null,
+    disclosures
+  },
+  evidence: []
+});
+
+const makePipelineSuccess = ({ traceId = "pipeline-trace", source = "cron" } = {}) => ({
+  ok: true,
+  triggerSource: source,
+  traceId,
+  contractVersion: "v1",
+  observedAt: "2026-05-20T14:00:01Z",
+  result: {
+    normalized_data_bundle: {},
+    analysis_result: {
+      risk_score: 2,
+      risk_level: "caution",
+      checklist: [],
+      short_term_report: "단기 리포트",
+      long_term_report: "장기 리포트",
+      disclaimer: "투자 참고용입니다.",
+      missing_evidence: []
+    },
+    preparation: {
+      persistence: {},
+      notification: {}
+    }
+  },
+  evidence: []
+});
+
+test("first cron trigger initializes checkpoint without invoking pipeline", async () => {
   const checkpointPath = makeCheckpointPath();
   const checkpointStore = new LocalDisclosureCheckpointStore(checkpointPath);
   const pipelineCalls = [];
 
   const result = await runTriggeredDisclosureCheck(
-    createDisclosureTriggerRequest({ source: "cron", keyword: "카카오", traceId: "first-cron" }),
+    createDisclosureTriggerRequest({
+      source: "cron",
+      keyword: "카카오",
+      traceId: "first-cron"
+    }),
     {
       checkpointStore,
-      tool: {
-        descriptor: { name: "fetch_disclosures", description: "stub", canonicalCommand: "stub" },
-        invoke: async () => ({
-          ok: true,
+      tool: makeFetchTool(async () =>
+        makeFetchSuccess({
           traceId: "first-cron",
-          contractVersion: "v1",
-          observedAt: "2026-05-20T12:00:00Z",
-          data: {
-            corpCode: "00258801",
-            company: null,
-            disclosures: [
-              { rcept_no: "202605200002", report_nm: "사업보고서", rcept_dt: "20260520" },
-              { rcept_no: "202605200001", report_nm: "분기보고서", rcept_dt: "20260520" }
-            ]
-          },
-          evidence: []
+          disclosures: [
+            { rcept_no: "202605200100", report_nm: "사업보고서", rcept_dt: "20260520" }
+          ]
         })
-      },
-      pipelineTool: {
-        invoke: async (request) => {
-          pipelineCalls.push(request);
-          return { ok: true };
-        }
+      ),
+      pipelineRunner: async (request) => {
+        pipelineCalls.push(request);
+        return makePipelineSuccess({ traceId: request.traceId, source: request.source });
       }
     }
   );
 
   assert.equal(result.ok, true);
   assert.equal(result.hasNewDisclosure, false);
-  assert.equal(pipelineCalls.length, 0);
+  assert.equal(result.pipelineResult, undefined);
+  assert.deepEqual(pipelineCalls, []);
+  assert.equal(checkpointStore.read("00258801"), "202605200100");
 });
 
-test("subsequent cron run with new disclosures invokes pipeline once with canonical corpCode", async () => {
+test("subsequent cron trigger with new disclosure invokes pipeline exactly once", async () => {
   const checkpointPath = makeCheckpointPath();
   const checkpointStore = new LocalDisclosureCheckpointStore(checkpointPath);
-  checkpointStore.write("00258801", "202605200002");
+  checkpointStore.write("00258801", "202605200100");
   const pipelineCalls = [];
 
   const result = await runTriggeredDisclosureCheck(
-    createDisclosureTriggerRequest({ source: "cron", keyword: "카카오", traceId: "cron-new" }),
+    createDisclosureTriggerRequest({
+      source: "cron",
+      keyword: "카카오",
+      traceId: "new-cron"
+    }),
     {
       checkpointStore,
-      tool: {
-        descriptor: { name: "fetch_disclosures", description: "stub", canonicalCommand: "stub" },
-        invoke: async () => ({
-          ok: true,
-          traceId: "cron-new",
-          contractVersion: "v1",
-          observedAt: "2026-05-20T12:10:00Z",
-          data: {
-            corpCode: "00258801",
-            company: null,
-            disclosures: [
-              { rcept_no: "202605200003", report_nm: "신규 공시", rcept_dt: "20260520" },
-              { rcept_no: "202605200002", report_nm: "사업보고서", rcept_dt: "20260520" }
-            ]
-          },
-          evidence: []
+      tool: makeFetchTool(async () =>
+        makeFetchSuccess({
+          traceId: "new-cron",
+          disclosures: [
+            { rcept_no: "202605200101", report_nm: "신규 공시", rcept_dt: "20260520" },
+            { rcept_no: "202605200100", report_nm: "사업보고서", rcept_dt: "20260520" }
+          ]
         })
-      },
-      pipelineTool: {
-        invoke: async (request) => {
-          pipelineCalls.push(request);
-          return {
-            ok: true,
-            triggerSource: request.source,
-            traceId: request.traceId,
-            contractVersion: request.contractVersion,
-            observedAt: "2026-05-20T12:11:00Z",
-            result: { normalized_data_bundle: {}, analysis_result: {}, preparation: {} },
-            evidence: []
-          };
-        }
+      ),
+      pipelineRunner: async (request) => {
+        pipelineCalls.push(request);
+        return makePipelineSuccess({ traceId: request.traceId, source: request.source });
       }
     }
   );
 
   assert.equal(result.ok, true);
+  assert.equal(result.hasNewDisclosure, true);
+  assert.equal(result.pipelineResult.ok, true);
   assert.equal(pipelineCalls.length, 1);
   assert.deepEqual(pipelineCalls[0], {
     source: "cron",
     corpCode: "00258801",
     keyword: "카카오",
-    traceId: "cron-new",
-    contractVersion: "v1"
+    traceId: "new-cron",
+    contractVersion: "v1",
+    metadata: {
+      runReason: "new disclosure detected",
+      newDisclosureCount: 1,
+      newDisclosureIds: ["202605200101"]
+    }
   });
-  assert.equal(result.pipelineResult.ok, true);
 });
 
-test("manual user trigger invokes pipeline even without a new disclosure", async () => {
+test("manual user trigger invokes pipeline even when no new disclosure is detected", async () => {
   const checkpointPath = makeCheckpointPath();
   const checkpointStore = new LocalDisclosureCheckpointStore(checkpointPath);
-  checkpointStore.write("00258801", "202605200010");
+  checkpointStore.write("00258801", "202605200100");
   const pipelineCalls = [];
 
   const result = await runTriggeredDisclosureCheck(
-    createDisclosureTriggerRequest({ source: "user", keyword: "카카오", traceId: "manual-no-new" }),
+    createDisclosureTriggerRequest({
+      source: "user",
+      keyword: "카카오",
+      traceId: "manual-no-new"
+    }),
     {
       checkpointStore,
-      tool: {
-        descriptor: { name: "fetch_disclosures", description: "stub", canonicalCommand: "stub" },
-        invoke: async () => ({
-          ok: true,
+      tool: makeFetchTool(async () =>
+        makeFetchSuccess({
           traceId: "manual-no-new",
-          contractVersion: "v1",
-          observedAt: "2026-05-20T12:30:00Z",
-          data: {
-            corpCode: "00258801",
-            company: null,
-            disclosures: [
-              { rcept_no: "202605200010", report_nm: "사업보고서", rcept_dt: "20260520" }
-            ]
-          },
-          evidence: []
+          disclosures: [
+            { rcept_no: "202605200100", report_nm: "사업보고서", rcept_dt: "20260520" }
+          ]
         })
-      },
-      pipelineTool: {
-        invoke: async (request) => {
-          pipelineCalls.push(request);
-          return {
-            ok: false,
-            triggerSource: request.source,
-            traceId: request.traceId,
-            contractVersion: request.contractVersion,
-            observedAt: "2026-05-20T12:31:00Z",
-            error: { code: "pipeline_failed", message: "stub failure" },
-            evidence: []
-          };
-        }
+      ),
+      pipelineRunner: async (request) => {
+        pipelineCalls.push(request);
+        return makePipelineSuccess({ traceId: request.traceId, source: request.source });
       }
     }
   );
 
   assert.equal(result.ok, true);
   assert.equal(result.hasNewDisclosure, false);
+  assert.equal(result.pipelineResult.ok, true);
   assert.equal(pipelineCalls.length, 1);
+  assert.equal(pipelineCalls[0].source, "user");
+  assert.equal(pipelineCalls[0].metadata.runReason, "manual disclosure check");
+});
+
+test("fetch failure does not invoke pipeline and does not advance checkpoint", async () => {
+  const checkpointPath = makeCheckpointPath();
+  const checkpointStore = new LocalDisclosureCheckpointStore(checkpointPath);
+  checkpointStore.write("카카오", "202605200100");
+  const pipelineCalls = [];
+
+  const result = await runTriggeredDisclosureCheck(
+    createDisclosureTriggerRequest({
+      source: "cron",
+      keyword: "카카오",
+      traceId: "fetch-failure"
+    }),
+    {
+      checkpointStore,
+      tool: makeFetchTool(async () => ({
+        ok: false,
+        traceId: "fetch-failure",
+        contractVersion: "v1",
+        observedAt: "2026-05-20T14:00:00Z",
+        error: { code: "missing_env", message: "DART_API_KEY가 없습니다." },
+        evidence: []
+      })),
+      pipelineRunner: async (request) => {
+        pipelineCalls.push(request);
+        return makePipelineSuccess({ traceId: request.traceId, source: request.source });
+      }
+    }
+  );
+
+  assert.equal(result.ok, false);
+  assert.equal(result.pipelineResult, undefined);
+  assert.deepEqual(pipelineCalls, []);
+  assert.equal(checkpointStore.read("카카오"), "202605200100");
+});
+
+test("pipeline failure is nested without erasing disclosure evidence", async () => {
+  const checkpointPath = makeCheckpointPath();
+  const checkpointStore = new LocalDisclosureCheckpointStore(checkpointPath);
+  checkpointStore.write("00258801", "202605200100");
+
+  const result = await runTriggeredDisclosureCheck(
+    createDisclosureTriggerRequest({
+      source: "cron",
+      keyword: "카카오",
+      traceId: "pipeline-failure"
+    }),
+    {
+      checkpointStore,
+      tool: makeFetchTool(async () =>
+        makeFetchSuccess({
+          traceId: "pipeline-failure",
+          disclosures: [
+            { rcept_no: "202605200101", report_nm: "신규 공시", rcept_dt: "20260520" },
+            { rcept_no: "202605200100", report_nm: "사업보고서", rcept_dt: "20260520" }
+          ]
+        })
+      ),
+      pipelineRunner: async (request) => ({
+        ok: false,
+        triggerSource: request.source,
+        traceId: request.traceId,
+        contractVersion: "v1",
+        observedAt: "2026-05-20T14:00:01Z",
+        error: { code: "analysis_failed", message: "pipeline failed" },
+        evidence: []
+      })
+    }
+  );
+
+  assert.equal(result.ok, true);
+  assert.equal(result.result.ok, true);
   assert.equal(result.pipelineResult.ok, false);
-  assert.equal(result.pipelineResult.error.code, "pipeline_failed");
+  assert.equal(result.pipelineResult.error.code, "analysis_failed");
+  assert.deepEqual(result.newDisclosureIds, ["202605200101"]);
 });
