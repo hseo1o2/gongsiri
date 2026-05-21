@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 
 import {
   createRunAnalysisPipelineTool,
@@ -135,15 +135,27 @@ test("pipeline CLI emits typed envelope through FastAPI HTTP endpoint", async ()
   const endpointUrl = `http://127.0.0.1:${address.port}/analysis/pipeline`;
 
   try {
-    const result = spawnSync(
-      "node",
-      ["dist/cli/runPipelineTrigger.js", "--source", "cron", "--keyword", "카카오", "--trace-id", "cli-trace"],
-      {
-        cwd: process.cwd(),
-        encoding: "utf-8",
-        env: { ...process.env, GONGSIRI_PIPELINE_API_URL: endpointUrl }
-      }
-    );
+    const result = await new Promise((resolve) => {
+      const child = spawn(
+        "node",
+        ["dist/cli/runPipelineTrigger.js", "--source", "cron", "--keyword", "카카오", "--trace-id", "cli-trace"],
+        {
+          cwd: process.cwd(),
+          env: { ...process.env, GONGSIRI_PIPELINE_API_URL: endpointUrl }
+        }
+      );
+      let stdout = "";
+      let stderr = "";
+      child.stdout.setEncoding("utf-8");
+      child.stderr.setEncoding("utf-8");
+      child.stdout.on("data", (chunk) => {
+        stdout += chunk;
+      });
+      child.stderr.on("data", (chunk) => {
+        stderr += chunk;
+      });
+      child.on("close", (status) => resolve({ status, stdout, stderr }));
+    });
 
     assert.equal(result.status, 0, result.stderr);
     const parsed = JSON.parse(result.stdout.trim());
