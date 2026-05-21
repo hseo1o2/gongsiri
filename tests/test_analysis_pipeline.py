@@ -151,7 +151,10 @@ class AnalysisPipelineTests(unittest.TestCase):
                 "traceId": "http-trace",
                 "contractVersion": "v1",
                 "observedAt": "2026-05-20T12:00:00Z",
-                "error": {"code": "invalid_request", "message": "keyword 또는 corpCode 중 하나는 반드시 필요합니다."},
+                "error": {
+                    "code": "invalid_request",
+                    "message": "keyword 또는 corpCode 중 하나는 반드시 필요합니다.",
+                },
                 "evidence": [],
             },
         ):
