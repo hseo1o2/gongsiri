@@ -82,21 +82,14 @@ const resolveCanonicalCorpCode = (
 const buildPipelineTriggerRequest = (
   request: DisclosureTriggerRequest,
   canonicalKey: string,
-  newDisclosureIds: string[]
+  _newDisclosureIds: string[]
 ): PipelineTriggerRequest => ({
   source: request.source,
   ...(canonicalKey !== "unknown" ? { corpCode: canonicalKey } : {}),
   ...(request.keyword ? { keyword: request.keyword } : {}),
   traceId: request.traceId,
   contractVersion: request.contractVersion,
-  metadata: {
-    ...request.metadata,
-    runReason:
-      request.metadata?.runReason ??
-      (request.source === "user" ? "manual disclosure check" : "new disclosure detected"),
-    newDisclosureCount: newDisclosureIds.length,
-    newDisclosureIds
-  }
+  ...(request.metadata ? { metadata: request.metadata } : {})
 });
 
 const shouldInvokePipeline = (
@@ -180,6 +173,7 @@ export const runTriggeredDisclosureCheck = async (
     tool?: ToolDefinition;
     checkpointStore?: LocalDisclosureCheckpointStore;
     pipelineRunner?: (request: PipelineTriggerRequest) => Promise<PipelineResult>;
+    pipelineTool?: { invoke(request: PipelineTriggerRequest): Promise<PipelineResult> };
   } = {}
 ): Promise<TriggeredDisclosureResult> => {
   const tool = options.tool ?? fetchDisclosuresTool;
@@ -209,11 +203,10 @@ export const runTriggeredDisclosureCheck = async (
 
   let pipelineResult: PipelineResult | undefined;
 
-  if (
-    options.pipelineRunner &&
-    shouldInvokePipeline(request, previousLastSeen, hasNewDisclosure)
-  ) {
-    pipelineResult = await options.pipelineRunner(
+  const pipelineRunner = options.pipelineRunner ?? options.pipelineTool?.invoke.bind(options.pipelineTool);
+
+  if (pipelineRunner && shouldInvokePipeline(request, previousLastSeen, hasNewDisclosure)) {
+    pipelineResult = await pipelineRunner(
       buildPipelineTriggerRequest(request, canonicalKey, newDisclosureIds)
     );
   }
