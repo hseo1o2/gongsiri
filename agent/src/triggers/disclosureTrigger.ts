@@ -3,6 +3,7 @@ import type {
   DisclosureTriggerRequest,
   TriggerSource
 } from "../contracts/request.js";
+import type { PipelineResult, PipelineTriggerRequest } from "../contracts/pipeline.js";
 import type {
   ToolResultFailure,
   ToolResultSuccess,
@@ -78,6 +79,32 @@ const resolveCanonicalCorpCode = (
 ): string =>
   result.data.corpCode || request.corpCode || request.keyword || "unknown";
 
+const buildPipelineTriggerRequest = (
+  request: DisclosureTriggerRequest,
+  canonicalKey: string,
+  newDisclosureIds: string[]
+): PipelineTriggerRequest => ({
+  source: request.source,
+  ...(canonicalKey !== "unknown" ? { corpCode: canonicalKey } : {}),
+  ...(request.keyword ? { keyword: request.keyword } : {}),
+  traceId: request.traceId,
+  contractVersion: request.contractVersion,
+  metadata: {
+    ...request.metadata,
+    runReason:
+      request.metadata?.runReason ??
+      (request.source === "user" ? "manual disclosure check" : "new disclosure detected"),
+    newDisclosureCount: newDisclosureIds.length,
+    newDisclosureIds
+  }
+});
+
+const shouldInvokePipeline = (
+  request: DisclosureTriggerRequest,
+  previousLastSeen: string | null,
+  hasNewDisclosure: boolean
+): boolean => request.source === "user" || (Boolean(previousLastSeen) && hasNewDisclosure);
+
 const readPreviousLastSeen = (
   checkpointStore: LocalDisclosureCheckpointStore,
   canonicalKey: string,
@@ -152,6 +179,7 @@ export const runTriggeredDisclosureCheck = async (
   options: {
     tool?: ToolDefinition;
     checkpointStore?: LocalDisclosureCheckpointStore;
+    pipelineRunner?: (request: PipelineTriggerRequest) => Promise<PipelineResult>;
   } = {}
 ): Promise<TriggeredDisclosureResult> => {
   const tool = options.tool ?? fetchDisclosuresTool;
@@ -179,6 +207,17 @@ export const runTriggeredDisclosureCheck = async (
   const newDisclosureIds = collectNewDisclosureIds(result.data.disclosures, previousLastSeen);
   const hasNewDisclosure = previousLastSeen ? newDisclosureIds.length > 0 : false;
 
+  let pipelineResult: PipelineResult | undefined;
+
+  if (
+    options.pipelineRunner &&
+    shouldInvokePipeline(request, previousLastSeen, hasNewDisclosure)
+  ) {
+    pipelineResult = await options.pipelineRunner(
+      buildPipelineTriggerRequest(request, canonicalKey, newDisclosureIds)
+    );
+  }
+
   if (currentLastSeen) {
     checkpointStore.write(canonicalKey, currentLastSeen);
 
@@ -196,6 +235,7 @@ export const runTriggeredDisclosureCheck = async (
     newDisclosureCount: newDisclosureIds.length,
     newDisclosureIds,
     checkpoint: buildCheckpoint(checkpointStore.checkpointPath, previousLastSeen, currentLastSeen),
-    result
+    result,
+    ...(pipelineResult ? { pipelineResult } : {})
   };
 };
