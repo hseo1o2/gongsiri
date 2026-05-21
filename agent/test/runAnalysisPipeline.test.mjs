@@ -104,6 +104,7 @@ test("pipeline CLI emits typed envelope through HTTP tool and preserves trace/so
       encoding: "utf-8",
       env: {
         ...process.env,
+        PYTHON_BIN: "/bin/false",
         GONGSIRI_PIPELINE_API_URL: "data:application/json," + encodeURIComponent(JSON.stringify({
           ...successEnvelope("cli-trace"),
           triggerSource: "cron"
