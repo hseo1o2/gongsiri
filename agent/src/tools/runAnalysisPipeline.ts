@@ -110,7 +110,7 @@ export const createRunAnalysisPipelineTool = (
     } catch (error) {
       return buildFailure(
         "pipeline_http_error",
-        error instanceof Error ? error.message : "Pipeline HTTP 요청에 실패했습니다.",
+        error instanceof Error ? error.message : "저 공시리가 Pipeline HTTP 요청을 완료하지 못했습니다.",
         request
       );
     }
@@ -120,7 +120,7 @@ export const createRunAnalysisPipelineTool = (
     if (!response.ok) {
       return buildFailure(
         "pipeline_http_error",
-        `Pipeline HTTP ${response.status}${response.statusText ? ` ${response.statusText}` : ""}${raw ? `: ${raw}` : ""}`,
+        `저 공시리가 Pipeline HTTP ${response.status}${response.statusText ? ` ${response.statusText}` : ""} 응답을 받았습니다${raw ? `: ${raw}` : ""}`,
         request
       );
     }
@@ -128,7 +128,7 @@ export const createRunAnalysisPipelineTool = (
     if (!raw) {
       return buildFailure(
         "pipeline_http_error",
-        `Pipeline HTTP ${response.status}${response.statusText ? ` ${response.statusText}` : ""}: empty response body`,
+        `저 공시리가 Pipeline HTTP ${response.status}${response.statusText ? ` ${response.statusText}` : ""}에서 빈 응답 본문을 받았습니다.`,
         request
       );
     }
@@ -141,13 +141,13 @@ export const createRunAnalysisPipelineTool = (
 
       return buildFailure(
         "pipeline_malformed_output",
-        "Pipeline HTTP response did not match the pipeline result contract.",
+        "저 공시리가 Pipeline HTTP 응답을 pipeline result contract로 해석하지 못했습니다.",
         request
       );
     } catch (error) {
       return buildFailure(
         "pipeline_malformed_output",
-        error instanceof Error ? error.message : "Pipeline HTTP JSON 파싱에 실패했습니다.",
+        error instanceof Error ? error.message : "저 공시리가 Pipeline HTTP JSON을 파싱하지 못했습니다.",
         request
       );
     }

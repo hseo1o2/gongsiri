@@ -1,10 +1,10 @@
 ---
 title: "gongsiri 에이전트 아키텍처"
-tags: ["gongsiri", "agent", "architecture", "pi-agent", "frontend", "backend", "layer"]
+tags: ["gongsiri", "agent", "architecture", "pi-agent", "frontend", "backend", "layer", "pi-sdk", "http", "layered"]
 created: 2026-05-21T06:10:55.215Z
-updated: 2026-05-21T06:10:55.215Z
+updated: 2026-05-21T13:22:08.019Z
 sources: ["assets/공시리 기획서.pdf §4·§8", "AGENTS.md R&R", "docs/05~07", "agent/src/*"]
-links: ["tool-vs-skill.md", "gongsiri-8.md"]
+links: ["tool-vs-skill.md", "gongsiri-8.md", "gongsiri-http-pi-sdk.md"]
 category: architecture
 confidence: high
 schemaVersion: 1
@@ -54,3 +54,24 @@ schemaVersion: 1
 
 관련: [[Tool vs Skill — 에이전트 멘탈 모델]], [[gongsiri §8 자율 동작 갭]]
 
+---
+
+## Update (2026-05-21T13:22:08.019Z)
+
+## 아키텍처 갱신 (2026-05-21) — HTTP + Pi SDK 전환
+
+위의 "프론트 ↔ 에이전트 ↔ backend = 형제 클라이언트" 모델과 subprocess bridge는
+**개정됨**. 새 결정으로 대체:
+
+- 프론트는 **백엔드만** 호출 (형제 클라이언트 아님). 에이전트는 백엔드 **서비스 계층
+  아래**에 위치, 백엔드가 내부 HTTP로 호출.
+- 에이전트 런타임 = 별도 상시 Node HTTP 서비스, 실제 Pi SDK(`@earendil-works/pi-coding-agent`)
+  사용. 기존 `agent/`는 이름만 Pi였고 SDK 의존성 0건이었음 → SDK 기반으로 재구성.
+- 에이전트는 leaf — 백엔드·운영 DB 역호출 금지. `runAnalysisPipelineTool →
+  /pipeline/trigger` 순환 제거.
+- Option A: 백엔드가 수집·6항목 채점, 에이전트는 Solar 추론·리포트 서술/QA 생성.
+- 단, "리포트 본문 생성은 B(analyzer)의 일" 원칙은 정량 채점에 한정 — 정성 서술·
+  QA 답변은 에이전트(C)가 Solar로 생성.
+
+상세: [[gongsiri 에이전트 HTTP + Pi SDK 전환 결정]]
+관련 문서: `docs/06-pi-agent-architecture.md` "HTTP + Pi SDK Architecture Decision (2026-05-21)" 섹션.

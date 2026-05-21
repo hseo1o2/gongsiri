@@ -5,6 +5,12 @@ declare const process: {
   exitCode?: number;
 };
 
+declare const Buffer: {
+  concat(chunks: Uint8Array[]): {
+    toString(encoding?: string): string;
+  };
+};
+
 declare const console: {
   log(message?: unknown, ...optionalParams: unknown[]): void;
   error(message?: unknown, ...optionalParams: unknown[]): void;
@@ -75,3 +81,31 @@ declare module "node:url" {
 }
 
 declare module "node:path" {}
+
+declare module "node:crypto" {
+  function randomUUID(): string;
+  export { randomUUID };
+}
+
+declare module "node:http" {
+  type IncomingMessage = {
+    method?: string;
+    url?: string;
+    headers: Record<string, string | string[] | undefined>;
+    [Symbol.asyncIterator](): AsyncIterator<Uint8Array>;
+  };
+
+  type ServerResponse = {
+    statusCode: number;
+    setHeader(name: string, value: string): void;
+    end(body?: string): void;
+  };
+
+  function createServer(
+    listener: (request: IncomingMessage, response: ServerResponse) => void
+  ): {
+    listen(port: number, host: string, callback?: () => void): void;
+  };
+
+  export { createServer };
+}

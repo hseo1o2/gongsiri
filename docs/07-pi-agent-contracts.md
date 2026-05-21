@@ -255,3 +255,77 @@ Rules:
 - `UPSTAGE_API_KEY` must come from env, never tracked files
 - the runtime may default `UPSTAGE_MODEL` to `solar-pro3`
 - stdout remains JSON-only and safe to use as PR evidence
+
+## Demo Pi SDK HTTP Service Contract
+
+Implementation surface:
+- Node package: `agent/`
+- Runtime entrypoint: `agent/src/server.ts`
+- Pi SDK runner: `agent/src/pi/piSession.ts`
+- Backend client: `backend/agent_client.py`
+- Backend merge helpers: `backend/agent_service.py`
+
+Local service:
+- `GET /health`
+- `POST /report`
+- `POST /qa`
+- default bind: `GONGSIRI_AGENT_HOST=127.0.0.1`, `GONGSIRI_AGENT_PORT=8787`
+- backend base URL: `GONGSIRI_AGENT_URL` or `AGENT_SERVICE_URL`, default `http://127.0.0.1:8787`
+
+Request envelope:
+
+```ts
+type AgentServiceRequest = {
+  traceId?: string;
+  contractVersion?: "v1";
+  source?: "user" | "system" | "cron";
+  corpCode?: string;
+  corpName?: string;
+  question?: string; // required for /qa
+  normalizedDataBundle?: Record<string, unknown>;
+  bundle?: Record<string, unknown>;
+  analysisResult?: Record<string, unknown>;
+  preparation?: Record<string, unknown>;
+  evidence?: Array<Record<string, unknown>>;
+};
+```
+
+Response envelope:
+
+```ts
+type AgentServiceResponse =
+  | {
+      ok: true;
+      mode: "report" | "qa";
+      traceId: string;
+      contractVersion: "v1";
+      observedAt: string;
+      text: string;
+      evidence: Array<Record<string, unknown>>;
+    }
+  | {
+      ok: false;
+      mode: "report" | "qa";
+      traceId: string;
+      contractVersion: "v1";
+      observedAt: string;
+      text: "";
+      error: {
+        code:
+          | "invalid_request"
+          | "method_not_allowed"
+          | "not_found"
+          | "missing_env"
+          | "pi_agent_error";
+        message: string;
+      };
+      evidence: Array<Record<string, unknown>>;
+    };
+```
+
+Rules:
+- `POST /report` and `POST /qa` must use the Pi SDK (`createAgentSession`) with Upstage configured as an OpenAI-compatible provider.
+- Strict Pi SDK-first: backend must not fall back to legacy Solar-only QA/report generation when the agent service fails.
+- The agent service is leaf-only: it must not call backend HTTP endpoints or mutate DB/report history.
+- Runtime tools are disabled for the demo path with `noTools: "all"`; all source material must come from backend-generated JSON context.
+- User-facing text must be Korean Markdown, first-person, and explicitly identify the speaker as `공시리`.

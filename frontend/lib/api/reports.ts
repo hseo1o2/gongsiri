@@ -14,8 +14,16 @@ function trimTrailingSlash(value: string): string {
   return value.endsWith('/') ? value.slice(0, -1) : value
 }
 
-export function getReportsEndpoint(baseUrl: string = DEFAULT_API_BASE_URL): string {
+export function getBackendReportsEndpoint(baseUrl: string = DEFAULT_API_BASE_URL): string {
   return `${trimTrailingSlash(baseUrl)}/api/v1/reports`
+}
+
+export function getReportsEndpoint(baseUrl?: string): string {
+  if (baseUrl) {
+    return getBackendReportsEndpoint(baseUrl)
+  }
+
+  return typeof window === 'undefined' ? getBackendReportsEndpoint() : '/api/v1/reports'
 }
 
 export async function postReports(
@@ -36,17 +44,29 @@ export async function postReports(
 }
 
 export async function fetchReportList(corpCodes?: string[]): Promise<ReportListResponse> {
-  return (await postReports({
+  const payload = await postReports({
     view: 'report-list',
     ...(corpCodes ? { corpCodes } : {}),
-  })) as ReportListResponse
+  }, { cache: 'no-store' })
+
+  if (!isReportListResponse(payload)) {
+    throw new Error('지원되지 않는 리포트 목록 응답 형식입니다.')
+  }
+
+  return payload
 }
 
 export async function fetchReportDetail(corpCode: string): Promise<ReportDetailResponse> {
-  return (await postReports({
+  const payload = await postReports({
     view: 'report-detail',
     corpCode,
-  })) as ReportDetailResponse
+  }, { cache: 'no-store' })
+
+  if (!isTypedReportDetailResponse(payload)) {
+    throw new Error('지원되지 않는 리포트 상세 응답 형식입니다.')
+  }
+
+  return payload
 }
 
 export async function postManualCheck(corpCodes: string[]): Promise<ManualCheckResponse> {
@@ -109,6 +129,10 @@ export interface ReportDetailViewModel {
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
+}
+
+function isReportListResponse(payload: unknown): payload is ReportListResponse {
+  return isObject(payload) && payload.view === 'report-list' && Array.isArray(payload.reports) && isObject(payload.fallback)
 }
 
 function isTypedReportDetailResponse(payload: unknown): payload is ReportDetailResponse {

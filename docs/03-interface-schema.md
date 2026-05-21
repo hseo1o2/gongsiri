@@ -208,3 +208,18 @@ Required fields:
 - `PreparedNotificationPayload`
 
 These are interface/boundary models only for G003 and must not imply real DB writes or delivery.
+
+## Demo Backend ↔ Pi SDK Agent Seam
+Source contract: `docs/07-pi-agent-contracts.md` → "Demo Pi SDK HTTP Service Contract".
+
+For the browser demo, FastAPI remains the only frontend-facing HTTP surface. The backend
+may call the local Pi SDK agent service internally after it has produced:
+- `normalizedDataBundle` from collector/runtime normalization
+- `analysisResult` from analyzer/checklist scoring
+- optional `preparation` DTOs
+
+Guardrails:
+- Frontend must not call the agent service directly.
+- The Pi SDK agent service must not call backend HTTP routes.
+- Report and QA paths are strict Pi SDK-first; typed agent failures must not be hidden by legacy Solar-only fallback.
+- User-facing narrative/error text must speak in first person as `공시리`.

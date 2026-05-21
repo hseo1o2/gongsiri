@@ -7,10 +7,14 @@ PR1에서 Pi runtime과 Python collector bridge가 기대하는 환경변수를 
 ### Pi runtime / Node side
 - `UPSTAGE_API_KEY` — Upstage Solar runtime access key
 - `UPSTAGE_MODEL` — optional model override (e.g. `solar-pro3`)
+- `UPSTAGE_BASE_URL` — optional OpenAI-compatible Upstage base URL; default `https://api.upstage.ai/v1`
 - `PYTHON_BIN` — optional Python executable override for bridge spawning
 - `GONGSIRI_CONTRACT_VERSION` — optional contract version override; default policy is `v1`
 - `GONGSIRI_CHECKPOINT_PATH` — optional local checkpoint file override for last-seen disclosure state
 - `GONGSIRI_SCHEDULER_INTERVAL_MINUTES` — optional default interval for cron/scheduler checks (default `30`)
+- `GONGSIRI_AGENT_HOST` — optional Pi SDK HTTP service bind host; default `127.0.0.1`
+- `GONGSIRI_AGENT_PORT` — optional Pi SDK HTTP service bind port; default `8787`
+- `GONGSIRI_AGENT_URL` — backend-to-agent internal HTTP base URL; default `http://127.0.0.1:8787`
 - `NEXT_PUBLIC_API_BASE_URL` — optional frontend/runtime HTTP base URL for typed API clients (default `http://localhost:8000`)
 
 ### Python collector side
@@ -26,12 +30,16 @@ Root `.env.example` must document the PR1 bootstrap keys as:
 
 ```dotenv
 UPSTAGE_API_KEY=
-UPSTAGE_MODEL=
+UPSTAGE_MODEL=solar-pro3
+UPSTAGE_BASE_URL=https://api.upstage.ai/v1
 PYTHON_BIN=python3
 GONGSIRI_CONTRACT_VERSION=v1
 DART_API_KEY=
 GONGSIRI_CHECKPOINT_PATH=
 GONGSIRI_SCHEDULER_INTERVAL_MINUTES=30
+GONGSIRI_AGENT_HOST=127.0.0.1
+GONGSIRI_AGENT_PORT=8787
+GONGSIRI_AGENT_URL=http://127.0.0.1:8787
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 ```
 
@@ -40,6 +48,8 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 ## Runtime Separation
 - Pi runtime env controls orchestration and subprocess invocation.
 - Upstage Solar chat/runtime verification paths consume `UPSTAGE_API_KEY` and optionally `UPSTAGE_MODEL`.
+- Demo report/QA paths are strict Pi SDK-first: if `UPSTAGE_API_KEY` is missing or the Pi SDK HTTP service is down, the backend returns a typed failure instead of using a Solar-only fallback.
+- User-facing report/QA/notification copy must speak in first person as `공시리` (for example, `저 공시리가...`).
 - Python env controls disclosure fetch execution.
 - stderr may contain diagnostics, but business output for the bridge must be machine-readable JSON on stdout only.
 

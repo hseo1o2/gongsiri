@@ -52,7 +52,7 @@ export const runManualPrompt = async (
   );
 
   if (!runtime.agent.canHandle(prompt)) {
-    throw new Error("PiDisclosureAgent가 처리할 수 없는 프롬프트입니다.");
+    throw new Error("저 공시리가 처리할 수 없는 프롬프트입니다.");
   }
 
   return runtime.agent.run({
@@ -65,3 +65,5 @@ export const runManualPrompt = async (
 export { createDisclosureScheduler, createDisclosureTriggerRequest, runTriggeredDisclosureCheck };
 export { runAnalysisPipelineTool };
 export { solarChatTool };
+export type { AgentHealthResponse, AgentQaRequest, AgentReportRequest, AgentServiceResponse } from "./contracts/agentService.js";
+export { createAgentHttpServer, startAgentHttpServer } from "./server.js";

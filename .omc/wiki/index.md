@@ -1,6 +1,6 @@
 # Wiki Index
 
-> 6 pages | Last updated: 2026-05-21T06:11:07.510Z
+> 9 pages | Last updated: 2026-05-21T13:22:18.597Z
 
 ## architecture
 
@@ -9,6 +9,7 @@
 ## decision
 
 - [gongsiri §8 자율 동작 갭](gongsiri-8.md) — # gongsiri §8 자율 동작 갭
+- [gongsiri 에이전트 HTTP + Pi SDK 전환 결정](gongsiri-http-pi-sdk.md) — # gongsiri 에이전트 HTTP + Pi SDK 전환 결정
 
 ## pattern
 
@@ -17,5 +18,7 @@
 ## session-log
 
 - [Session Log 2026-05-20](session-log-2026-05-20-f770f15a.md) — # Session Log 2026-05-20
+- [Session Log 2026-05-21](session-log-2026-05-21-589e9f07.md) — # Session Log 2026-05-21
 - [Session Log 2026-05-21](session-log-2026-05-21-5b5e1e70.md) — # Session Log 2026-05-21
 - [Session Log 2026-05-21](session-log-2026-05-21-bdb6a7bb.md) — # Session Log 2026-05-21
+- [Session Log 2026-05-21](session-log-2026-05-21-c9c979c1.md) — # Session Log 2026-05-21

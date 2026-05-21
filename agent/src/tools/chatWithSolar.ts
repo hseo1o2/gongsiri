@@ -179,7 +179,7 @@ export const createSolarChatTool = (
       return buildFailure(
         request,
         "solar_malformed_output",
-        stderr.trim() || "Solar chat stdout가 비어 있습니다."
+        stderr.trim() || "저 공시리가 Solar chat stdout에서 응답 본문을 찾지 못했습니다."
       );
     }
 
@@ -192,13 +192,13 @@ export const createSolarChatTool = (
       return buildFailure(
         request,
         "solar_malformed_output",
-        "Solar chat 응답이 계약 형태와 일치하지 않습니다."
+        "저 공시리가 Solar chat 응답을 계약 형태로 해석하지 못했습니다."
       );
     } catch (error) {
       return buildFailure(
         request,
         "solar_malformed_output",
-        error instanceof Error ? error.message : "Solar chat JSON 파싱에 실패했습니다."
+        error instanceof Error ? error.message : "저 공시리가 Solar chat JSON을 파싱하지 못했습니다."
       );
     }
   }

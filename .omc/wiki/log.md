@@ -28,3 +28,19 @@
 - **Pages:** gongsiri-8.md
 - **Summary:** Created new page "gongsiri §8 자율 동작 갭"
 
+## [2026-05-21T13:21:51.667Z] ingest
+- **Pages:** gongsiri-http-pi-sdk.md
+- **Summary:** Created new page "gongsiri 에이전트 HTTP + Pi SDK 전환 결정"
+
+## [2026-05-21T13:22:08.019Z] ingest
+- **Pages:** gongsiri.md
+- **Summary:** Updated "gongsiri 에이전트 아키텍처" with new content
+
+## [2026-05-21T13:22:18.582Z] ingest
+- **Pages:** gongsiri-8.md
+- **Summary:** Updated "gongsiri §8 자율 동작 갭" with new content
+
+## [2026-05-21T13:23:34.561Z] ingest
+- **Pages:** session-log-2026-05-21-5077f9e2.md
+- **Summary:** Auto-captured session log for d6674ccf-c554-43e0-aab2-09995077f9e2
+

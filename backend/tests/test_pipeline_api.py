@@ -129,6 +129,14 @@ def test_api_v1_reports_reuses_pipeline_contract(monkeypatch):
         fake_run_pipeline_request,
         raising=False,
     )
+    monkeypatch.setattr(
+        "backend.main.attach_agent_report",
+        lambda response: {
+            **response,
+            "evidence": response["evidence"] + [{"source": "pi_agent_http"}],
+        },
+        raising=False,
+    )
 
     response = TestClient(app).post("/api/v1/reports", json={"corpCode": "00258801"})
 
@@ -149,6 +157,14 @@ def test_api_v1_reports_preserves_route_level_default_evidence(monkeypatch):
     monkeypatch.setattr(
         "backend.main.run_pipeline_request",
         fake_run_pipeline_request,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        "backend.main.attach_agent_report",
+        lambda response: {
+            **response,
+            "evidence": response["evidence"] + [{"source": "pi_agent_http"}],
+        },
         raising=False,
     )
 
@@ -204,8 +220,12 @@ def test_qa_route_accepts_snake_case_corp_code(monkeypatch):
         raising=False,
     )
     monkeypatch.setattr(
-        "backend.main.ask_qa",
-        lambda question, bundle, analysis_result: f"answer:{question}",
+        "backend.main.answer_qa_with_agent",
+        lambda *, question, bundle, analysis_result, trace_id, contract_version: {
+            "answer": f"answer:{question}",
+            "source": "pi_agent_http",
+            "evidence": [{"source": "pi_agent_http"}],
+        },
         raising=False,
     )
 
@@ -215,7 +235,8 @@ def test_qa_route_accepts_snake_case_corp_code(monkeypatch):
     )
 
     assert response.status_code == 200
-    assert response.json() == {"answer": "answer:CB 발행의 영향은?"}
+    assert response.json()["answer"] == "answer:CB 발행의 영향은?"
+    assert response.json()["source"] == "pi_agent_http"
     assert calls == [{"keyword": None, "corp_code": "00258801"}]
 
 
@@ -237,8 +258,12 @@ def test_qa_route_accepts_camel_case_corp_code(monkeypatch):
         raising=False,
     )
     monkeypatch.setattr(
-        "backend.main.ask_qa",
-        lambda question, bundle, analysis_result: "ok",
+        "backend.main.answer_qa_with_agent",
+        lambda *, question, bundle, analysis_result, trace_id, contract_version: {
+            "answer": "ok",
+            "source": "pi_agent_http",
+            "evidence": [{"source": "pi_agent_http"}],
+        },
         raising=False,
     )
 
@@ -248,7 +273,8 @@ def test_qa_route_accepts_camel_case_corp_code(monkeypatch):
     )
 
     assert response.status_code == 200
-    assert response.json() == {"answer": "ok"}
+    assert response.json()["answer"] == "ok"
+    assert response.json()["source"] == "pi_agent_http"
     assert calls == [{"keyword": None, "corp_code": "00258801"}]
 
 
@@ -270,8 +296,12 @@ def test_qa_route_accepts_keyword_when_corp_code_missing(monkeypatch):
         raising=False,
     )
     monkeypatch.setattr(
-        "backend.main.ask_qa",
-        lambda question, bundle, analysis_result: "ok",
+        "backend.main.answer_qa_with_agent",
+        lambda *, question, bundle, analysis_result, trace_id, contract_version: {
+            "answer": "ok",
+            "source": "pi_agent_http",
+            "evidence": [{"source": "pi_agent_http"}],
+        },
         raising=False,
     )
 
@@ -281,7 +311,8 @@ def test_qa_route_accepts_keyword_when_corp_code_missing(monkeypatch):
     )
 
     assert response.status_code == 200
-    assert response.json() == {"answer": "ok"}
+    assert response.json()["answer"] == "ok"
+    assert response.json()["source"] == "pi_agent_http"
     assert calls == [{"keyword": "카카오", "corp_code": None}]
 
 
@@ -297,3 +328,86 @@ def test_qa_route_requires_question_and_identifier():
     assert (
         missing_identifier.json()["detail"] == "corpCode 또는 keyword 중 하나는 반드시 필요합니다."
     )
+
+
+def test_api_v1_reports_returns_typed_agent_failure_without_fallback(monkeypatch):
+    from backend.agent_client import AgentServiceError
+
+    monkeypatch.setattr(
+        "backend.main.run_pipeline_request",
+        lambda request, *, trace_id=None: _success_envelope(
+            trace_id=trace_id or "agent-failure-trace",
+            source=request["source"],
+        ),
+        raising=False,
+    )
+
+    def fake_attach_agent_report(response: dict):
+        raise AgentServiceError(
+            "agent_unavailable",
+            "저 공시리가 agent service에 연결하지 못했습니다.",
+            status_code=503,
+            evidence=[{"source": "agent_http"}],
+        )
+
+    monkeypatch.setattr(
+        "backend.main.attach_agent_report",
+        fake_attach_agent_report,
+        raising=False,
+    )
+
+    response = TestClient(app).post("/api/v1/reports", json={"corpCode": "00258801"})
+
+    assert response.status_code == 503
+    payload = response.json()
+    assert payload["ok"] is False
+    assert payload["traceId"] == "agent-failure-trace"
+    assert payload["error"] == {
+        "code": "agent_unavailable",
+        "message": "저 공시리가 agent service에 연결하지 못했습니다.",
+    }
+    assert payload["evidence"] == [{"source": "agent_http"}]
+
+
+def test_qa_route_returns_typed_agent_failure_without_solar_fallback(monkeypatch):
+    from backend.agent_client import AgentServiceError
+
+    monkeypatch.setattr(
+        "backend.main.build_runtime_normalized_bundle",
+        lambda *, keyword=None, corp_code=None: {"bundle": True},
+        raising=False,
+    )
+    monkeypatch.setattr(
+        "backend.main.analyze_bundle",
+        lambda bundle: {"analysis": True},
+        raising=False,
+    )
+
+    def fake_answer_qa_with_agent(**kwargs):
+        raise AgentServiceError(
+            "agent_unavailable",
+            "저 공시리가 agent service에 연결하지 못했습니다.",
+            status_code=503,
+            evidence=[{"source": "agent_http"}],
+        )
+
+    monkeypatch.setattr(
+        "backend.main.answer_qa_with_agent",
+        fake_answer_qa_with_agent,
+        raising=False,
+    )
+
+    response = TestClient(app).post(
+        "/qa",
+        json={"corpCode": "00258801", "question": "최근 공시 요약", "traceId": "qa-trace"},
+    )
+
+    assert response.status_code == 503
+    payload = response.json()
+    assert payload["ok"] is False
+    assert payload["traceId"] == "qa-trace"
+    assert payload["error"] == {
+        "code": "agent_unavailable",
+        "message": "저 공시리가 agent service에 연결하지 못했습니다.",
+    }
+    assert payload["evidence"] == [{"source": "agent_http"}]

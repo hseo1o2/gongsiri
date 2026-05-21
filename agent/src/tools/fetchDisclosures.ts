@@ -151,14 +151,14 @@ export const createFetchDisclosuresTool = (
 
       return buildFailure(
         exitCode === 0 ? "bridge_malformed_output" : "bridge_process_failed",
-        "Bridge stdout did not match the ToolResult contract.",
+        "저 공시리가 Bridge stdout을 ToolResult contract로 해석하지 못했습니다.",
         traceId,
         contractVersion
       );
     } catch (error) {
       return buildFailure(
         "bridge_malformed_output",
-        error instanceof Error ? error.message : "Bridge stdout JSON 파싱에 실패했습니다.",
+        error instanceof Error ? error.message : "저 공시리가 Bridge stdout JSON을 파싱하지 못했습니다.",
         traceId,
         contractVersion
       );

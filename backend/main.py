@@ -1,12 +1,16 @@
+from datetime import UTC, datetime
 from json import JSONDecodeError
 from typing import Any
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
 
+from backend.agent_client import AgentServiceError
+from backend.agent_service import agent_failure_envelope, answer_qa_with_agent, attach_agent_report
 from backend.analyzer.pipeline import CONTRACT_VERSION, run_pipeline_request
-from backend.analyzer.qa import analyze_bundle, ask_qa
+from backend.analyzer.qa import analyze_bundle
 from backend.collector.normalize import (
     build_and_save_normalized_bundle,
     build_normalized_bundle,
@@ -22,7 +26,7 @@ def _typed_pipeline_failure(
         "triggerSource": source,
         "traceId": trace_id or str(uuid4()),
         "contractVersion": CONTRACT_VERSION,
-        "observedAt": "",
+        "observedAt": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
         "error": {"code": code, "message": message},
         "evidence": [],
     }
@@ -137,7 +141,8 @@ async def _run_pipeline_trigger_route(request: Request) -> JSONResponse:
     try:
         payload, _empty_body = await _read_pipeline_trigger_payload(request)
         pipeline_request, default_used = _resolve_pipeline_trigger_request(payload)
-        response = run_pipeline_request(
+        response = await run_in_threadpool(
+            run_pipeline_request,
             pipeline_request,
             trace_id=pipeline_request.get("traceId"),
         )
@@ -169,7 +174,51 @@ async def trigger_analysis_pipeline(request: Request):
 
 @app.post("/api/v1/reports")
 async def create_report(request: Request):
-    return await _run_pipeline_trigger_route(request)
+    try:
+        payload, _empty_body = await _read_pipeline_trigger_payload(request)
+        pipeline_request, default_used = _resolve_pipeline_trigger_request(payload)
+        response = await run_in_threadpool(
+            run_pipeline_request,
+            pipeline_request,
+            trace_id=pipeline_request.get("traceId"),
+        )
+        if default_used and response.get("ok"):
+            response = _append_route_default_evidence(response, "카카오")
+        if not response.get("ok"):
+            return JSONResponse(content=response, status_code=_pipeline_status_code(response))
+        response = await run_in_threadpool(attach_agent_report, response)
+        return JSONResponse(content=response, status_code=200)
+    except ValueError as exc:
+        source = "user"
+        try:
+            payload, _ = await _read_pipeline_trigger_payload(request)
+            source = str(payload.get("source") or "user") if isinstance(payload, dict) else "user"
+        except Exception:
+            pass
+        return JSONResponse(
+            content=_typed_pipeline_failure("invalid_request", str(exc), source=source),
+            status_code=400,
+        )
+    except AgentServiceError as exc:
+        return JSONResponse(
+            content=agent_failure_envelope(
+                exc,
+                trace_id=locals().get("response", {}).get("traceId")
+                or locals().get("pipeline_request", {}).get("traceId")
+                or str(uuid4()),
+                contract_version=CONTRACT_VERSION,
+                observed_at=locals().get("response", {}).get("observedAt")
+                or datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+                source=locals().get("response", {}).get("triggerSource")
+                or locals().get("pipeline_request", {}).get("source", "user"),
+            ),
+            status_code=exc.status_code,
+        )
+    except Exception as exc:
+        return JSONResponse(
+            content=_typed_pipeline_failure("pipeline_trigger_failed", str(exc), source="user"),
+            status_code=200,
+        )
 
 
 @app.post("/qa")
@@ -177,11 +226,39 @@ async def qa_route(request: Request):
     try:
         payload, _empty_body = await _read_pipeline_trigger_payload(request)
         question, corp_code, keyword = _resolve_qa_request(payload)
-        bundle = build_runtime_normalized_bundle(keyword=keyword, corp_code=corp_code)
-        analysis_result = analyze_bundle(bundle)
-        answer = ask_qa(question, bundle, analysis_result)
-        return {"answer": answer}
+        bundle = await run_in_threadpool(
+            build_runtime_normalized_bundle,
+            keyword=keyword,
+            corp_code=corp_code,
+        )
+        analysis_result = await run_in_threadpool(analyze_bundle, bundle)
+        return await run_in_threadpool(
+            answer_qa_with_agent,
+            question=question,
+            bundle=bundle,
+            analysis_result=analysis_result,
+            trace_id=str(payload.get("traceId") or uuid4()),
+            contract_version=str(payload.get("contractVersion") or CONTRACT_VERSION),
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except AgentServiceError as exc:
+        payload_trace_id = ""
+        payload_source = "user"
+        try:
+            payload_trace_id = str(payload.get("traceId") or "")
+            payload_source = str(payload.get("source") or "user")
+        except Exception:
+            pass
+        return JSONResponse(
+            content=agent_failure_envelope(
+                exc,
+                trace_id=payload_trace_id or str(uuid4()),
+                contract_version=CONTRACT_VERSION,
+                observed_at=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+                source=payload_source,
+            ),
+            status_code=exc.status_code,
+        )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
