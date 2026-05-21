@@ -34,8 +34,7 @@ def run_step1(bundle: NormalizedDataBundle) -> AnalysisResult:
     ]
 
     disclosure_texts = [
-        " ".join(filter(None, [d.report_nm, d.parsed_text]))
-        for d in bundle.disclosures
+        " ".join(filter(None, [d.report_nm, d.parsed_text])) for d in bundle.disclosures
     ]
     news_titles = [n.title for n in bundle.news_docs]
     financials = {

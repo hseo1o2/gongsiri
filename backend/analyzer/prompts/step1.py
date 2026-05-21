@@ -47,13 +47,13 @@ def build_messages(
 {news_block}
 
 === 재무 현황 ===
-매출: {financials.get('revenue', '데이터 없음')}
-영업이익: {financials.get('operating_income', '데이터 없음')}
-자기자본: {financials.get('equity', '데이터 없음')}
+매출: {financials.get("revenue", "데이터 없음")}
+영업이익: {financials.get("operating_income", "데이터 없음")}
+자기자본: {financials.get("equity", "데이터 없음")}
 
 === 시세 신호 ===
-월간 최대 수익률: {price_signals.get('monthly_return_max', '데이터 없음')}%
-거래량 급증 비율: {price_signals.get('volume_spike_ratio', '데이터 없음')}x
+월간 최대 수익률: {price_signals.get("monthly_return_max", "데이터 없음")}%
+거래량 급증 비율: {price_signals.get("volume_spike_ratio", "데이터 없음")}x
 
 === 정량 판단 결과 ===
 {checklist_block}

@@ -29,8 +29,7 @@ def ask_qa(
         for item in analysis_result.checklist
     ]
     disclosure_texts = [
-        " ".join(filter(None, [d.report_nm, d.parsed_text]))
-        for d in bundle.disclosures
+        " ".join(filter(None, [d.report_nm, d.parsed_text])) for d in bundle.disclosures
     ]
 
     messages = qa_prompt.build_messages(

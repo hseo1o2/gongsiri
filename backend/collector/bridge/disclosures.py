@@ -80,12 +80,16 @@ def _resolve_corp_code(
     if not company.corp_code:
         raise CorpCodeUnresolvedError(f"corp code를 확인할 수 없습니다: {keyword}")
 
-    return company.corp_code, company, {
-        "source": "keyword_resolution",
-        "keyword": keyword,
-        "corpCode": company.corp_code,
-        "corpName": company.corp_name,
-    }
+    return (
+        company.corp_code,
+        company,
+        {
+            "source": "keyword_resolution",
+            "keyword": keyword,
+            "corpCode": company.corp_code,
+            "corpName": company.corp_name,
+        },
+    )
 
 
 def run_fetch_disclosures_request(
