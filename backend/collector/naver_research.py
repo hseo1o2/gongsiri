@@ -4,7 +4,6 @@ from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
 
-
 NAVER_FINANCE_BASE_URL = "https://finance.naver.com"
 NAVER_RESEARCH_LIST_URL = "https://finance.naver.com/research/company_list.naver"
 

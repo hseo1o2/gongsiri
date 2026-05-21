@@ -101,9 +101,7 @@ def fetch_disclosures(
     data = response.json()
 
     if data.get("status") != "000":
-        raise RuntimeError(
-            f"OpenDART API error: {data.get('status')} / {data.get('message')}"
-        )
+        raise RuntimeError(f"OpenDART API error: {data.get('status')} / {data.get('message')}")
 
     disclosures = []
 

@@ -2,7 +2,6 @@
 import { useState } from 'react'
 import Topbar from '@/components/layout/Topbar'
 import RiskBadge from '@/components/ui/RiskBadge'
-import Button from '@/components/ui/Button'
 import type { PortfolioItem, RiskLevel } from '@/lib/types'
 
 const MOCK: PortfolioItem[] = [

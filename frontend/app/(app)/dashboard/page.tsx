@@ -2,7 +2,7 @@ import Topbar from '@/components/layout/Topbar'
 import MetricCard from '@/components/ui/MetricCard'
 import RiskBadge from '@/components/ui/RiskBadge'
 import RiskProgressBar from '@/components/ui/RiskProgressBar'
-import type { WatchlistItem, DisclosureAlert, RiskLevel } from '@/lib/types'
+import type { WatchlistItem, DisclosureAlert } from '@/lib/types'
 
 async function getWatchlistSummary() {
   return { count: 12, todayDisclosures: 3, cautionCount: 1, dangerCount: 0 }
