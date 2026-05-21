@@ -32,6 +32,8 @@ export type PromptRequest = {
 export type TriggerMetadata = {
   intervalMinutes?: number;
   runReason?: string;
+  newDisclosureCount?: number;
+  newDisclosureIds?: string[];
 };
 
 export type DisclosureTriggerRequest = FetchDisclosuresRequest & {

@@ -1,29 +1,10 @@
 # Python
 __pycache__/
 *.py[cod]
-*.pyc
 .ruff_cache/
 .pytest_cache/
-
-# Virtual environment
 venv/
 .venv/
-
-# Environment variables
-.env
-.env.local
-.env.*.local
-
-# Editors / IDE
-.vscode/
-.idea/
-
-# OS
-.DS_Store
-
-# Runtime cache / generated outputs (A's collector recreates the dir on demand)
-data/
-*.log
 
 # Node / Next.js
 node_modules/
@@ -32,15 +13,22 @@ dist/
 build/
 coverage/
 
-# Tooling — local override (do not commit)
+# Env / secrets
+.env
+.env.local
+.env.*.local
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Runtime cache / generated outputs
+data/
+*.log
 lefthook-local.yml
 
-# Agent / Orchestrator state (kept local, not shared)
-# Exception: .omc/wiki/ is team-shared work log
-# NOTE: Use .omc/* (single star), NOT .omc/** (double star).
-# With **, the negation !.omc/wiki/ does not re-include wiki files
-# because ** matches recursively and overrides the negation for nested paths.
-# Single * only matches direct children of .omc/, making !.omc/wiki/ effective.
+# Agent state — local only; .omc/wiki/ is the team-shared exception
 .omc/*
 !.omc/wiki/
 !.omc/wiki/**
@@ -48,5 +36,3 @@ lefthook-local.yml
 .clawhip/
 .openchrome/
 uv.lock
-
-# NOTE: .claude/ IS committed — it holds the team's shared Claude Code hooks and skills.

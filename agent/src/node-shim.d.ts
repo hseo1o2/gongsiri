@@ -13,6 +13,22 @@ declare const console: {
 declare function setInterval(handler: () => void, timeout?: number): number;
 declare function clearInterval(handle?: number): void;
 
+type FetchResponse = {
+  ok: boolean;
+  status: number;
+  statusText: string;
+  text(): Promise<string>;
+};
+
+declare function fetch(
+  input: string,
+  init?: {
+    method?: string;
+    headers?: Record<string, string>;
+    body?: string;
+  }
+): Promise<FetchResponse>;
+
 declare module "node:child_process" {
   type ExecFileError = Error & {
     code?: number | string | null;

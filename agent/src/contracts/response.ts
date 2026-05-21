@@ -1,3 +1,4 @@
+import type { PipelineResult } from "./pipeline.js";
 import type { ContractVersion, TriggerSource } from "./request.js";
 import type { ToolEvidence } from "./evidence.js";
 import type { ToolError } from "./error.js";
@@ -70,6 +71,7 @@ type TriggerResultShared = {
 export type TriggeredDisclosureSuccess = TriggerResultShared & {
   ok: true;
   result: ToolResultSuccess;
+  pipelineResult?: PipelineResult;
 };
 
 export type TriggeredDisclosureFailure = TriggerResultShared & {

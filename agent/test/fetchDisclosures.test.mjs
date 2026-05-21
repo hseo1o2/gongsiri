@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { createFetchDisclosuresTool } from "../dist/tools/fetchDisclosures.js";
 import { createRuntimeSkeleton, runManualPrompt } from "../dist/index.js";
@@ -93,12 +94,32 @@ exit 1
 });
 
 test("createFetchDisclosuresTool pins canonical python execution to repo root", async () => {
-  const tool = createFetchDisclosuresTool();
+  const calls = [];
+  const tool = createFetchDisclosuresTool({
+    execFileImpl: (pythonBin, args, options, callback) => {
+      calls.push({ pythonBin, args, options });
+      callback(
+        { code: 1 },
+        JSON.stringify({
+          ok: false,
+          traceId: "repo-root-trace",
+          contractVersion: "v1",
+          observedAt: "2026-05-20T12:00:00Z",
+          error: { code: "missing_env", message: "DART_API_KEY가 .env에 없습니다." },
+          evidence: []
+        }),
+        ""
+      );
+    }
+  });
   const result = await tool.invoke({ corpCode: "00126380", traceId: "repo-root-trace" });
 
   assert.equal(result.ok, false);
   assert.equal(result.error.code, "missing_env");
   assert.equal(result.traceId, "repo-root-trace");
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].options.cwd, fileURLToPath(new URL("../../", import.meta.url)));
+  assert.deepEqual(calls[0].args.slice(0, 2), ["-m", "backend.collector.cli.fetch_disclosures"]);
 });
 
 test("runManualPrompt routes disclosure prompts through the skill and tool", async () => {

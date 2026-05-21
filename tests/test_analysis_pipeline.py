@@ -3,6 +3,8 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
+from fastapi.testclient import TestClient
+
 from backend.analyzer.pipeline import run_pipeline_request
 from backend.analyzer.qa import analyze_bundle
 from backend.schemas.analysis import AnalysisResult
@@ -102,6 +104,72 @@ class AnalysisPipelineTests(unittest.TestCase):
         self.assertFalse(result["ok"])
         self.assertEqual(result["error"]["code"], "analysis_failed")
         self.assertEqual(result["triggerSource"], "cron")
+
+    def test_fastapi_pipeline_endpoint_returns_typed_envelope(self) -> None:
+        from backend.main import app
+
+        with patch(
+            "backend.main.run_pipeline_request",
+            return_value={
+                "ok": True,
+                "triggerSource": "user",
+                "traceId": "http-trace",
+                "contractVersion": "v1",
+                "observedAt": "2026-05-20T12:00:00Z",
+                "result": {
+                    "normalized_data_bundle": {},
+                    "analysis_result": {
+                        "risk_score": 0,
+                        "risk_level": "normal",
+                        "checklist": [],
+                        "short_term_report": "short",
+                        "long_term_report": "long",
+                        "disclaimer": "disc",
+                        "missing_evidence": [],
+                    },
+                    "preparation": {"persistence": {}, "notification": {}},
+                },
+                "evidence": [],
+            },
+        ) as runner:
+            response = TestClient(app).post(
+                "/analysis/pipeline",
+                json={"source": "user", "keyword": "카카오", "traceId": "http-trace"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertTrue(body["ok"])
+        self.assertEqual(body["traceId"], "http-trace")
+        runner.assert_called_once_with(
+            {"source": "user", "keyword": "카카오", "traceId": "http-trace"},
+            trace_id="http-trace",
+        )
+
+    def test_fastapi_pipeline_endpoint_preserves_typed_failure(self) -> None:
+        from backend.main import app
+
+        with patch(
+            "backend.main.run_pipeline_request",
+            return_value={
+                "ok": False,
+                "triggerSource": "user",
+                "traceId": "http-trace",
+                "contractVersion": "v1",
+                "observedAt": "2026-05-20T12:00:00Z",
+                "error": {
+                    "code": "invalid_request",
+                    "message": "keyword 또는 corpCode 중 하나는 반드시 필요합니다.",
+                },
+                "evidence": [],
+            },
+        ):
+            response = TestClient(app).post("/analysis/pipeline", json={"source": "user"})
+
+        self.assertEqual(response.status_code, 400)
+        body = response.json()
+        self.assertFalse(body["ok"])
+        self.assertEqual(body["error"]["code"], "invalid_request")
 
 
 if __name__ == "__main__":
