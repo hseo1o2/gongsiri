@@ -427,3 +427,29 @@ def test_qa_route_returns_typed_agent_failure_without_solar_fallback(monkeypatch
         "message": "저 공시리가 agent service에 연결하지 못했습니다.",
     }
     assert payload["evidence"] == [{"source": "agent_http"}]
+
+
+def test_attach_agent_report_rejects_malformed_pi_success_without_report_text():
+    from backend.agent_client import AgentServiceError
+    from backend.agent_service import attach_agent_report
+
+    class FakeAgentClient:
+        def generate_report(self, payload: dict) -> dict:
+            return {
+                "ok": True,
+                "traceId": "malformed-report-trace",
+                "contractVersion": "v1",
+                "evidence": [{"source": "fake_agent"}],
+            }
+
+    try:
+        attach_agent_report(
+            _success_envelope(trace_id="malformed-report-trace"), client=FakeAgentClient()
+        )
+    except AgentServiceError as exc:
+        assert exc.code == "agent_malformed_response"
+        assert "저 공시리가" in exc.message
+        assert exc.status_code == 502
+        assert any(item.get("endpoint") == "/report" for item in exc.evidence)
+    else:
+        raise AssertionError("malformed Pi report success must not fall back to deterministic text")

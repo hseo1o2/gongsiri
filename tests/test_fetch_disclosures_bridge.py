@@ -114,16 +114,19 @@ class FetchDisclosuresBridgeTests(unittest.TestCase):
     def test_read_only_resolver_does_not_mutate_stock_master(self) -> None:
         before = STOCK_MASTER_PATH.read_text(encoding="utf-8")
 
-        with patch(
-            "backend.collector.company_resolver.find_in_local_master",
-            return_value=None,
-        ), patch(
-            "backend.collector.company_resolver.search_stock_from_kskill",
-            return_value=CompanyInfo(
-                corp_name="테스트",
-                stock_code="000001",
-                corp_code="99999999",
-                market="KOSDAQ",
+        with (
+            patch(
+                "backend.collector.company_resolver.find_in_local_master",
+                return_value=None,
+            ),
+            patch(
+                "backend.collector.company_resolver.search_stock_from_kskill",
+                return_value=CompanyInfo(
+                    corp_name="테스트",
+                    stock_code="000001",
+                    corp_code="99999999",
+                    market="KOSDAQ",
+                ),
             ),
         ):
             company = resolve_company_read_only("테스트")
@@ -138,17 +141,22 @@ class FetchDisclosuresCliTests(unittest.TestCase):
         stdout = io.StringIO()
         stderr = io.StringIO()
 
-        with patch(
-            "backend.collector.cli.fetch_disclosures.run_fetch_disclosures_request",
-            return_value={
-                "ok": True,
-                "traceId": "trace-cli",
-                "contractVersion": "v1",
-                "observedAt": "2026-05-20T12:00:00Z",
-                "data": {"corpCode": "00126380", "company": None, "disclosures": []},
-                "evidence": [],
-            },
-        ), redirect_stdout(stdout), redirect_stderr(stderr):
+        with (
+            patch(
+                "backend.collector.cli.fetch_disclosures.run_fetch_disclosures_request",
+                return_value={
+                    "ok": True,
+                    "traceId": "trace-cli",
+                    "contractVersion": "v1",
+                    "observedAt": "2026-05-20T12:00:00Z",
+                    "data": {"corpCode": "00126380", "company": None, "disclosures": []},
+                    "evidence": [],
+                },
+            ),
+            patch("sys.stdin", io.StringIO("")),
+            redirect_stdout(stdout),
+            redirect_stderr(stderr),
+        ):
             exit_code = main(["--corp-code", "00126380"])
 
         self.assertEqual(exit_code, 0)

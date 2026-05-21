@@ -123,9 +123,18 @@ def attach_agent_report(
         }
     )
 
+    report_fields = _extract_report_fields(agent_response)
+    if not report_fields.get("short_term_report"):
+        raise AgentServiceError(
+            "agent_malformed_response",
+            "저 공시리가 Pi agent service 리포트 응답에서 본문을 찾지 못했습니다.",
+            status_code=502,
+            evidence=_agent_evidence(agent_response, endpoint="/report"),
+        )
+
     merged_result = dict(result)
     analysis_result = dict(merged_result.get("analysis_result") or {})
-    analysis_result.update(_extract_report_fields(agent_response))
+    analysis_result.update(report_fields)
     merged_result["analysis_result"] = analysis_result
     merged_result["agent"] = {
         "source": AGENT_SOURCE,

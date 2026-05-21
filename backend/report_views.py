@@ -61,7 +61,11 @@ def build_report_list_response(payload: dict[str, Any]) -> dict[str, Any]:
                 "riskScore": 0,
             }
         )
-    return {"view": "report-list", "reports": reports, "fallback": {"used": False}}
+    return {
+        "view": "report-list",
+        "reports": reports,
+        "fallback": {"used": True, "reason": "cold_start_no_cached_reports"},
+    }
 
 
 def build_manual_check_response(payload: dict[str, Any]) -> dict[str, Any]:
@@ -138,7 +142,7 @@ def _detail_view(agent_response: dict[str, Any], *, requested_corp_code: str) ->
             "corpCode": str(company.get("corp_code") or requested_corp_code),
             "corpName": str(company.get("corp_name") or requested_corp_code),
             "analyzedAt": str(agent_response.get("observedAt") or observed_at()),
-            "riskLevel": analysis.get("risk_level") or "unknown",
+            "riskLevel": _risk_level(analysis.get("risk_level")),
             "riskScore": analysis.get("risk_score") or 0,
             "checklist": _checklist(analysis.get("checklist")),
             "shortTermReport": str(analysis.get("short_term_report") or ""),
@@ -148,6 +152,12 @@ def _detail_view(agent_response: dict[str, Any], *, requested_corp_code: str) ->
         },
         "fallback": {"used": True, "reason": "cold_start_generated_detail"},
     }
+
+
+def _risk_level(value: Any) -> str:
+    if value in {"normal", "caution", "high"}:
+        return str(value)
+    raise RuntimeError("backend analysis_result.risk_level must be normal, caution, or high.")
 
 
 def _checklist(raw_items: Any) -> list[dict[str, Any]]:
