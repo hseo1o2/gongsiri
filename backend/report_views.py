@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
@@ -9,6 +10,8 @@ from backend.analyzer.pipeline import CONTRACT_VERSION, run_pipeline_request
 
 MAX_MANUAL_CHECK_BATCH_SIZE = 20
 REPORT_VIEWS = {"report-list", "report-detail", "manual-check"}
+CORP_CODE_PATTERN = re.compile(r"^\d{8}$")
+MAX_KEYWORD_LENGTH = 80
 
 
 def observed_at() -> str:
@@ -65,8 +68,8 @@ def build_manual_check_response(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def build_report_detail_response(payload: dict[str, Any]) -> dict[str, Any]:
-    corp_code = str(payload.get("corpCode") or "").strip()
-    keyword = str(payload.get("keyword") or "").strip()
+    corp_code = normalize_corp_code(payload.get("corpCode"), field_name="corpCode")
+    keyword = normalize_keyword(payload.get("keyword"), field_name="keyword")
     if not corp_code and not keyword:
         raise ValueError("report-detail은 corpCode 또는 keyword 중 하나가 필요합니다.")
 
@@ -103,7 +106,31 @@ def _corp_codes(payload: dict[str, Any]) -> list[str]:
     raw_codes = payload.get("corpCodes") or []
     if not isinstance(raw_codes, list):
         raise ValueError("corpCodes는 배열이어야 합니다.")
-    return [str(code).strip() for code in raw_codes if str(code).strip()]
+    return [
+        corp_code
+        for code in raw_codes
+        if (corp_code := normalize_corp_code(code, field_name="corpCodes[]"))
+    ]
+
+
+def normalize_corp_code(value: Any, *, field_name: str) -> str | None:
+    corp_code = str(value or "").strip()
+    if not corp_code:
+        return None
+    if not CORP_CODE_PATTERN.fullmatch(corp_code):
+        raise ValueError(f"{field_name}는 8자리 숫자 corpCode여야 합니다.")
+    return corp_code
+
+
+def normalize_keyword(value: Any, *, field_name: str) -> str | None:
+    keyword = str(value or "").strip()
+    if not keyword:
+        return None
+    if len(keyword) > MAX_KEYWORD_LENGTH:
+        raise ValueError(f"{field_name}는 {MAX_KEYWORD_LENGTH}자 이하여야 합니다.")
+    if any(char in keyword for char in ("/", "\\")) or any(ord(char) < 32 for char in keyword):
+        raise ValueError(f"{field_name}에 경로 또는 제어 문자를 사용할 수 없습니다.")
+    return keyword
 
 
 def _detail_view(agent_response: dict[str, Any], *, requested_corp_code: str) -> dict[str, Any]:

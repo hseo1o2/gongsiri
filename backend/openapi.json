@@ -179,7 +179,8 @@
         "type": "object",
         "properties": {
           "corpCode": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^\\d{8}$"
           },
           "corpName": {
             "type": "string"
@@ -210,7 +211,8 @@
         "type": "object",
         "properties": {
           "corpCode": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^\\d{8}$"
           },
           "corpName": {
             "type": "string"
@@ -271,7 +273,8 @@
           "corpCodes": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{8}$"
             },
             "maxItems": 20
           }
@@ -288,7 +291,8 @@
             "const": "report-detail"
           },
           "corpCode": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^\\d{8}$"
           }
         },
         "required": [
@@ -306,7 +310,8 @@
           "corpCodes": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{8}$"
             },
             "minItems": 1,
             "maxItems": 20

@@ -194,6 +194,28 @@ def test_api_v1_reports_requires_valid_view():
     assert payload["error"]["code"] == "invalid_request"
 
 
+def test_api_v1_reports_rejects_malformed_corp_code_without_pipeline(monkeypatch):
+    def fail_run_pipeline_request(*_args, **_kwargs):
+        raise AssertionError("malformed corpCode must fail before pipeline execution")
+
+    monkeypatch.setattr(
+        "backend.report_views.run_pipeline_request",
+        fail_run_pipeline_request,
+        raising=False,
+    )
+
+    response = TestClient(app).post(
+        "/api/v1/reports",
+        json={"view": "report-detail", "corpCode": "../../etc/passwd"},
+    )
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["ok"] is False
+    assert payload["error"]["code"] == "invalid_request"
+    assert payload["error"]["message"] == "corpCode는 8자리 숫자 corpCode여야 합니다."
+
+
 def test_pipeline_trigger_exception_maps_to_typed_failure(monkeypatch):
     def fake_run_pipeline_request(request: dict, *, trace_id: str | None = None):
         raise RuntimeError("route exploded")
@@ -334,13 +356,39 @@ def test_qa_route_requires_question_and_identifier():
 
     missing_question = client.post("/qa", json={"corpCode": "00258801"})
     assert missing_question.status_code == 400
-    assert missing_question.json()["detail"] == "question은 비어 있을 수 없습니다."
+    assert missing_question.json()["ok"] is False
+    assert missing_question.json()["error"]["code"] == "invalid_request"
+    assert missing_question.json()["error"]["message"] == "question은 비어 있을 수 없습니다."
 
     missing_identifier = client.post("/qa", json={"question": "질문"})
     assert missing_identifier.status_code == 400
+    assert missing_identifier.json()["ok"] is False
+    assert missing_identifier.json()["error"]["code"] == "invalid_request"
     assert (
-        missing_identifier.json()["detail"] == "corpCode 또는 keyword 중 하나는 반드시 필요합니다."
+        missing_identifier.json()["error"]["message"]
+        == "corpCode 또는 keyword 중 하나는 반드시 필요합니다."
     )
+
+
+def test_qa_route_rejects_malformed_corp_code_without_agent_call(monkeypatch):
+    def fail_build_runtime_normalized_bundle(**_kwargs):
+        raise AssertionError("malformed corpCode must fail before bundle construction")
+
+    monkeypatch.setattr(
+        "backend.main.build_runtime_normalized_bundle",
+        fail_build_runtime_normalized_bundle,
+        raising=False,
+    )
+
+    response = TestClient(app).post(
+        "/qa",
+        json={"corpCode": "../../etc/passwd", "question": "질문"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["ok"] is False
+    assert response.json()["error"]["code"] == "invalid_request"
+    assert response.json()["error"]["message"] == "corpCode는 8자리 숫자 corpCode여야 합니다."
 
 
 def test_api_v1_reports_returns_typed_agent_failure_without_fallback(monkeypatch):

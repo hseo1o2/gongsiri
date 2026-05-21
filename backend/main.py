@@ -20,6 +20,8 @@ from backend.report_views import (
     build_manual_check_response,
     build_report_detail_response,
     build_report_list_response,
+    normalize_corp_code,
+    normalize_keyword,
     report_failure,
     resolve_report_view,
 )
@@ -133,8 +135,10 @@ def _resolve_pipeline_trigger_request(payload: dict[str, Any]) -> tuple[dict[str
 
 def _resolve_qa_request(payload: dict[str, Any]) -> tuple[str, str | None, str | None]:
     question = str(payload.get("question") or "").strip()
-    corp_code = str(payload.get("corpCode") or payload.get("corp_code") or "").strip() or None
-    keyword = str(payload.get("keyword") or "").strip() or None
+    corp_code = normalize_corp_code(
+        payload.get("corpCode") or payload.get("corp_code"), field_name="corpCode"
+    )
+    keyword = normalize_keyword(payload.get("keyword"), field_name="keyword")
 
     if not question:
         raise ValueError("question은 비어 있을 수 없습니다.")
@@ -242,7 +246,15 @@ async def qa_route(request: Request):
             contract_version=str(payload.get("contractVersion") or CONTRACT_VERSION),
         )
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        payload_source = "user"
+        try:
+            payload_source = str(payload.get("source") or "user")
+        except Exception:
+            pass
+        return JSONResponse(
+            content=_typed_pipeline_failure("invalid_request", str(exc), source=payload_source),
+            status_code=400,
+        )
     except AgentServiceError as exc:
         payload_trace_id = ""
         payload_source = "user"
