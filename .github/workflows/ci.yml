@@ -46,6 +46,7 @@ jobs:
         with:
           node-version: "22"
       - run: corepack enable
+      - run: corepack prepare pnpm@10.32.1 --activate
       - name: ESLint
         run: |
           if [ -f frontend/package.json ]; then
@@ -62,6 +63,7 @@ jobs:
         with:
           node-version: "22"
       - run: corepack enable
+      - run: corepack prepare pnpm@10.32.1 --activate
       - name: TypeScript check
         run: |
           if [ -f frontend/package.json ]; then
@@ -78,6 +80,7 @@ jobs:
         with:
           node-version: "22"
       - run: corepack enable
+      - run: corepack prepare pnpm@10.32.1 --activate
       - name: Next.js build
         run: |
           if [ -f frontend/package.json ]; then
