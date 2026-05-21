@@ -1,4 +1,5 @@
 import type { ReportDetailContract } from '@/lib/api/types'
+import type { CompanyInfo } from '@/lib/types'
 import type { DemoDashboardSummary, DemoQaStockOption, DemoSessionAction, DemoSessionState } from './types'
 import { createInitialDemoSessionState } from './seed'
 
@@ -23,6 +24,16 @@ export function demoSessionReducer(
         ...state,
         watchlistByCorpCode: { ...state.watchlistByCorpCode, [corpCode]: action.item },
         watchlistOrder: [...state.watchlistOrder, corpCode],
+        reportSummariesByCorpCode: {
+          ...state.reportSummariesByCorpCode,
+          [corpCode]: {
+            corpCode,
+            corpName: action.item.corp_name,
+            analyzedAt: action.item.last_analyzed ?? '데모 세션',
+            riskLevel: action.item.risk_level ?? 'normal',
+            riskScore: action.item.risk_score ?? 0,
+          },
+        },
         addStatus: {
           state: 'added',
           corpCode,
@@ -31,11 +42,11 @@ export function demoSessionReducer(
       }
     }
     case 'watchlist/remove': {
-      const remaining = { ...state.watchlistByCorpCode }
-      delete remaining[action.corpCode]
+      const remainingWatchlist = { ...state.watchlistByCorpCode }
+      delete remainingWatchlist[action.corpCode]
       return {
         ...state,
-        watchlistByCorpCode: remaining,
+        watchlistByCorpCode: remainingWatchlist,
         watchlistOrder: state.watchlistOrder.filter(code => code !== action.corpCode),
       }
     }
@@ -116,4 +127,24 @@ export function selectQaStockOptions(state: DemoSessionState): DemoQaStockOption
     corp_name: summary.corpName,
     risk_level: summary.riskLevel,
   }))
+}
+
+export function searchDemoCompanies(state: DemoSessionState, query: string): CompanyInfo[] {
+  const normalizedQuery = query.trim().toLocaleLowerCase('ko')
+  if (!normalizedQuery) return []
+
+  return state.companyCatalog
+    .filter(item => {
+      const haystack = [item.corp_name, item.stock_code, item.corp_code, item.market]
+        .join(' ')
+        .toLocaleLowerCase('ko')
+      return haystack.includes(normalizedQuery)
+    })
+    .slice(0, 8)
+    .map(item => ({
+      corp_code: item.corp_code,
+      corp_name: item.corp_name,
+      stock_code: item.stock_code,
+      market: item.market,
+    }))
 }

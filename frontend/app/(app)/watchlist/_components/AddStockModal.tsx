@@ -1,46 +1,56 @@
 'use client'
+
 import { useState } from 'react'
 import { IconX } from '@tabler/icons-react'
-import SearchInput from './SearchInput'
 import Button from '@/components/ui/Button'
-import type { CompanyInfo } from '@/lib/types'
+import { useDemoSession } from '@/lib/demo-session'
+import type { CompanyInfo, WatchlistItem } from '@/lib/types'
+import SearchInput from './SearchInput'
 
 interface Props {
   onClose: () => void
-  onAdded: () => void
 }
 
-export default function AddStockModal({ onClose, onAdded }: Props) {
+function toWatchlistItem(company: CompanyInfo): WatchlistItem | null {
+  if (!company.corp_code || !company.market) return null
+  return {
+    corp_code: company.corp_code,
+    corp_name: company.corp_name,
+    stock_code: company.stock_code,
+    market: company.market,
+    risk_level: 'normal',
+    risk_score: 0,
+    last_analyzed: '데모 세션',
+  }
+}
+
+export default function AddStockModal({ onClose }: Props) {
+  const { dispatch, state } = useDemoSession()
   const [selected, setSelected] = useState<CompanyInfo | null>(null)
-  const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
   const [error, setError] = useState('')
 
-  async function handleAdd() {
+  function handleAdd() {
     if (!selected) return
-    setLoading(true)
     setDone(false)
     setError('')
 
-    try {
-      const res = await fetch('/api/watchlist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ corp_code: selected.corp_code, corp_name: selected.corp_name, stock_code: selected.stock_code, market: selected.market }),
-      })
-      const data = await res.json()
-
-      if (!res.ok || data.ok === false) {
-        throw new Error(data.message ?? '워치리스트 저장에 실패했습니다.')
-      }
-
-      setDone(true)
-      setTimeout(() => { onAdded(); onClose() }, 1200)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '워치리스트 저장에 실패했습니다.')
-    } finally {
-      setLoading(false)
+    const item = toWatchlistItem(selected)
+    if (!item) {
+      dispatch({ type: 'watchlist/notFound', query: selected.corp_name })
+      setError(`${selected.corp_name}은 데모 종목 카탈로그에서 찾을 수 없습니다.`)
+      return
     }
+
+    if (state.watchlistByCorpCode[item.corp_code]) {
+      dispatch({ type: 'watchlist/add', item })
+      setError(`${item.corp_name}은 이미 워치리스트에 있습니다.`)
+      return
+    }
+
+    dispatch({ type: 'watchlist/add', item })
+    setDone(true)
+    setTimeout(onClose, 900)
   }
 
   return (
@@ -51,7 +61,7 @@ export default function AddStockModal({ onClose, onAdded }: Props) {
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-tertiary)' }}><IconX size={18} /></button>
         </div>
 
-        <SearchInput onSelect={company => { setSelected(company); setError('') }} />
+        <SearchInput onSelect={company => { setSelected(company); setDone(false); setError('') }} />
 
         {selected && (
           <div style={{ marginTop: 12, padding: '12px 14px', background: 'var(--color-bg-secondary)', borderRadius: 'var(--radius-md)', border: '0.5px solid var(--color-border-tertiary)' }}>
@@ -64,7 +74,7 @@ export default function AddStockModal({ onClose, onAdded }: Props) {
 
         {done && (
           <p style={{ marginTop: 12, fontSize: 13, color: '#639922', letterSpacing: '-0.02em' }}>
-            ✓ 등록 완료 — 분석 파이프라인 시작됨
+            ✓ 등록 완료 — 데모 세션 워치리스트에 반영됨
           </p>
         )}
 
@@ -76,8 +86,8 @@ export default function AddStockModal({ onClose, onAdded }: Props) {
 
         <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'flex-end' }}>
           <Button variant="secondary" onClick={onClose}>취소</Button>
-          <Button onClick={handleAdd} disabled={!selected || loading}>
-            {loading ? '등록 중...' : '종목 추가'}
+          <Button onClick={handleAdd} disabled={!selected}>
+            종목 추가
           </Button>
         </div>
       </div>

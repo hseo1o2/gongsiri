@@ -1,9 +1,10 @@
 'use client'
 
-import { createContext, useContext, useMemo, useReducer, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useMemo, useReducer, type ReactNode } from 'react'
 import type { DemoSessionAction, DemoSessionState } from './types'
 import {
   demoSessionReducer,
+  searchDemoCompanies,
   selectDashboardSummary,
   selectQaStockOptions,
   selectReportSummaries,
@@ -18,12 +19,14 @@ interface DemoSessionContextValue {
   reportSummaries: ReturnType<typeof selectReportSummaries>
   dashboardSummary: ReturnType<typeof selectDashboardSummary>
   qaStockOptions: ReturnType<typeof selectQaStockOptions>
+  searchCompanies: (query: string) => ReturnType<typeof searchDemoCompanies>
 }
 
 const DemoSessionContext = createContext<DemoSessionContextValue | null>(null)
 
 export function DemoSessionProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(demoSessionReducer, undefined, createInitialDemoSessionState)
+  const searchCompanies = useCallback((query: string) => searchDemoCompanies(state, query), [state])
   const value = useMemo(
     () => ({
       state,
@@ -32,8 +35,9 @@ export function DemoSessionProvider({ children }: { children: ReactNode }) {
       reportSummaries: selectReportSummaries(state),
       dashboardSummary: selectDashboardSummary(state),
       qaStockOptions: selectQaStockOptions(state),
+      searchCompanies,
     }),
-    [state],
+    [searchCompanies, state],
   )
 
   return <DemoSessionContext.Provider value={value}>{children}</DemoSessionContext.Provider>

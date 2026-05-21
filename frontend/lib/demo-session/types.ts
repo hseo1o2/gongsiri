@@ -24,6 +24,7 @@ export interface DemoManualCheckSnapshot {
 
 export interface DemoSessionState {
   auth: DemoAuthState
+  companyCatalog: WatchlistItem[]
   watchlistByCorpCode: Record<string, WatchlistItem>
   watchlistOrder: string[]
   addStatus: DemoAddStatus

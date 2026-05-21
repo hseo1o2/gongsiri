@@ -27,6 +27,32 @@ const SEEDED_WATCHLIST: WatchlistItem[] = [
   },
 ]
 
+const DEMO_COMPANY_CATALOG: WatchlistItem[] = [
+  ...SEEDED_WATCHLIST,
+  {
+    corp_code: '00247540',
+    corp_name: '에코프로비엠',
+    stock_code: '247540',
+    market: 'KOSDAQ',
+    price: 128900,
+    change_rate: 3.8,
+    risk_level: 'normal',
+    risk_score: 1,
+    last_analyzed: '데모 후보',
+  },
+  {
+    corp_code: '00068270',
+    corp_name: '셀트리온',
+    stock_code: '068270',
+    market: 'KOSPI',
+    price: 162000,
+    change_rate: -1.1,
+    risk_level: 'normal',
+    risk_score: 1,
+    last_analyzed: '데모 후보',
+  },
+]
+
 const SEEDED_REPORTS: ReportSummaryContract[] = SEEDED_WATCHLIST.map(item => ({
   corpCode: item.corp_code,
   corpName: item.corp_name,
@@ -47,6 +73,7 @@ export function createInitialDemoSessionState(): DemoSessionState {
       displayName: '공시리 데모 관리자',
       onboardingComplete: true,
     },
+    companyCatalog: DEMO_COMPANY_CATALOG,
     watchlistByCorpCode: byCorpCode(SEEDED_WATCHLIST),
     watchlistOrder: SEEDED_WATCHLIST.map(item => item.corp_code),
     addStatus: { state: 'idle', message: '' },
