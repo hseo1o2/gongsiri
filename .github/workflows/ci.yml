@@ -49,7 +49,7 @@ jobs:
       - name: ESLint
         run: |
           if [ -f frontend/package.json ]; then
-            cd frontend && pnpm install --config.strict-dep-builds=false && pnpm exec eslint .
+            cd frontend && pnpm install --config.strict-dep-builds=false && pnpm --config.strict-dep-builds=false exec eslint .
           else
             echo "CI: eslint skipped (frontend not initialized)"
           fi
@@ -65,7 +65,7 @@ jobs:
       - name: TypeScript check
         run: |
           if [ -f frontend/package.json ]; then
-            cd frontend && pnpm install --config.strict-dep-builds=false && pnpm exec tsc --noEmit
+            cd frontend && pnpm install --config.strict-dep-builds=false && pnpm --config.strict-dep-builds=false exec tsc --noEmit
           else
             echo "CI: tsc skipped (frontend not initialized)"
           fi
@@ -81,7 +81,7 @@ jobs:
       - name: Next.js build
         run: |
           if [ -f frontend/package.json ]; then
-            cd frontend && pnpm install --config.strict-dep-builds=false && pnpm build
+            cd frontend && pnpm install --config.strict-dep-builds=false && pnpm --config.strict-dep-builds=false build
           else
             echo "CI: build skipped (frontend not initialized)"
           fi
