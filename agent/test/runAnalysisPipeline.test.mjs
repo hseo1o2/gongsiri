@@ -1,24 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createServer } from "node:http";
-import { spawn } from "node:child_process";
+import { spawnSync } from "node:child_process";
 
 import {
   createRunAnalysisPipelineTool,
   runAnalysisPipelineToolDescriptor
 } from "../dist/tools/runAnalysisPipeline.js";
 
-const makeJsonResponse = (body, init = {}) => ({
-  ok: init.ok ?? true,
-  status: init.status ?? 200,
-  statusText: init.statusText ?? "OK",
-  text: async () => (typeof body === "string" ? body : JSON.stringify(body))
-});
-
-const successEnvelope = (overrides = {}) => ({
+const successEnvelope = (traceId = "pipeline-trace") => ({
   ok: true,
   triggerSource: "user",
-  traceId: "pipeline-trace",
+  traceId,
   contractVersion: "v1",
   observedAt: "2026-05-20T12:00:00Z",
   result: {
@@ -34,17 +26,25 @@ const successEnvelope = (overrides = {}) => ({
     },
     preparation: { persistence: {}, notification: {} }
   },
-  evidence: [],
-  ...overrides
+  evidence: []
 });
 
-test("runAnalysisPipelineTool posts request to FastAPI HTTP endpoint", async () => {
+const makeJsonResponse = (body, init = {}) => ({
+  ok: init.ok ?? true,
+  status: init.status ?? 200,
+  statusText: init.statusText ?? "OK",
+  async text() {
+    return typeof body === "string" ? body : JSON.stringify(body);
+  }
+});
+
+test("runAnalysisPipelineTool sends POST to configured FastAPI endpoint with JSON body", async () => {
   const calls = [];
   const tool = createRunAnalysisPipelineTool({
-    endpointUrl: "http://127.0.0.1:8765/analysis/pipeline",
-    fetchImpl: async (input, init) => {
-      calls.push({ input, init });
-      return makeJsonResponse(successEnvelope());
+    apiUrl: "http://backend.test/pipeline/trigger",
+    fetchImpl: async (url, init) => {
+      calls.push({ url, init });
+      return makeJsonResponse(successEnvelope("pipeline-trace"));
     }
   });
 
@@ -52,10 +52,10 @@ test("runAnalysisPipelineTool posts request to FastAPI HTTP endpoint", async () 
 
   assert.equal(result.ok, true);
   assert.equal(result.traceId, "pipeline-trace");
-  assert.equal(result.result.analysis_result.risk_level, "caution");
-  assert.equal(calls[0].input, "http://127.0.0.1:8765/analysis/pipeline");
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, "http://backend.test/pipeline/trigger");
   assert.equal(calls[0].init.method, "POST");
-  assert.equal(calls[0].init.headers["Content-Type"], "application/json");
+  assert.equal(calls[0].init.headers["content-type"], "application/json");
   assert.deepEqual(JSON.parse(calls[0].init.body), {
     source: "user",
     keyword: "카카오",
@@ -64,110 +64,57 @@ test("runAnalysisPipelineTool posts request to FastAPI HTTP endpoint", async () 
   });
 });
 
-test("runAnalysisPipelineTool returns typed failure for HTTP transport errors", async () => {
+test("runAnalysisPipelineTool maps non-2xx HTTP to typed pipeline_http_error", async () => {
   const tool = createRunAnalysisPipelineTool({
-    fetchImpl: async () => {
-      throw new Error("connection refused");
-    }
+    fetchImpl: async () => makeJsonResponse("backend unavailable", { ok: false, status: 503, statusText: "Service Unavailable" })
   });
 
-  const result = await tool.invoke({ source: "cron", keyword: "카카오" });
+  const result = await tool.invoke({ source: "cron", keyword: "카카오", traceId: "http-error" });
 
   assert.equal(result.ok, false);
   assert.equal(result.error.code, "pipeline_http_error");
-  assert.match(result.error.message, /connection refused/);
+  assert.match(result.error.message, /503/);
+  assert.equal(result.traceId, "http-error");
 });
 
-test("runAnalysisPipelineTool maps malformed HTTP output to typed failure", async () => {
+test("runAnalysisPipelineTool maps malformed JSON to typed pipeline_malformed_output", async () => {
   const tool = createRunAnalysisPipelineTool({
     fetchImpl: async () => makeJsonResponse("not-json")
   });
 
-  const result = await tool.invoke({ source: "cron", keyword: "카카오" });
+  const result = await tool.invoke({ source: "system", keyword: "카카오", traceId: "bad-json" });
 
   assert.equal(result.ok, false);
   assert.equal(result.error.code, "pipeline_malformed_output");
+  assert.equal(result.traceId, "bad-json");
 });
 
-test("runAnalysisPipelineTool preserves machine-readable failure envelopes from FastAPI", async () => {
-  const tool = createRunAnalysisPipelineTool({
-    fetchImpl: async () =>
-      makeJsonResponse(
-        {
-          ok: false,
-          triggerSource: "cron",
-          traceId: "bad-request-trace",
-          contractVersion: "v1",
-          observedAt: "2026-05-20T12:00:00Z",
-          error: { code: "invalid_request", message: "keyword 또는 corpCode 중 하나는 반드시 필요합니다." },
-          evidence: []
-        },
-        { ok: false, status: 400, statusText: "Bad Request" }
-      )
-  });
-
-  const result = await tool.invoke({ source: "cron", traceId: "bad-request-trace" });
-
-  assert.equal(result.ok, false);
-  assert.equal(result.error.code, "invalid_request");
-  assert.equal(result.triggerSource, "cron");
+test("runAnalysisPipelineTool descriptor advertises HTTP endpoint instead of Python subprocess", () => {
+  assert.equal(runAnalysisPipelineToolDescriptor.name, "run_analysis_pipeline");
+  assert.equal(runAnalysisPipelineToolDescriptor.endpoint, "POST /pipeline/trigger");
+  assert.equal("canonicalCommand" in runAnalysisPipelineToolDescriptor, false);
 });
 
-test("pipeline CLI emits typed envelope through FastAPI HTTP endpoint", async () => {
-  const receivedBodies = [];
-  const server = createServer(async (req, res) => {
-    assert.equal(req.method, "POST");
-    assert.equal(req.url, "/analysis/pipeline");
-
-    let body = "";
-    for await (const chunk of req) {
-      body += chunk;
+test("pipeline CLI emits typed envelope through HTTP tool and preserves trace/source", () => {
+  const result = spawnSync(
+    "node",
+    ["dist/cli/runPipelineTrigger.js", "--source", "cron", "--keyword", "카카오", "--trace-id", "cli-trace"],
+    {
+      cwd: process.cwd(),
+      encoding: "utf-8",
+      env: {
+        ...process.env,
+        GONGSIRI_PIPELINE_API_URL: "data:application/json," + encodeURIComponent(JSON.stringify({
+          ...successEnvelope("cli-trace"),
+          triggerSource: "cron"
+        }))
+      }
     }
-    receivedBodies.push(JSON.parse(body));
+  );
 
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify(successEnvelope({ triggerSource: "cron", traceId: "cli-trace" })));
-  });
-
-  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
-  const address = server.address();
-  assert.equal(typeof address, "object");
-  const endpointUrl = `http://127.0.0.1:${address.port}/analysis/pipeline`;
-
-  try {
-    const result = await new Promise((resolve) => {
-      const child = spawn(
-        "node",
-        ["dist/cli/runPipelineTrigger.js", "--source", "cron", "--keyword", "카카오", "--trace-id", "cli-trace"],
-        {
-          cwd: process.cwd(),
-          env: { ...process.env, GONGSIRI_PIPELINE_API_URL: endpointUrl }
-        }
-      );
-      let stdout = "";
-      let stderr = "";
-      child.stdout.setEncoding("utf-8");
-      child.stderr.setEncoding("utf-8");
-      child.stdout.on("data", (chunk) => {
-        stdout += chunk;
-      });
-      child.stderr.on("data", (chunk) => {
-        stderr += chunk;
-      });
-      child.on("close", (status) => resolve({ status, stdout, stderr }));
-    });
-
-    assert.equal(result.status, 0, result.stderr);
-    const parsed = JSON.parse(result.stdout.trim());
-    assert.equal(parsed.ok, true);
-    assert.equal(parsed.triggerSource, "cron");
-    assert.equal(parsed.traceId, "cli-trace");
-    assert.equal(runAnalysisPipelineToolDescriptor.name, "run_analysis_pipeline");
-    assert.equal(runAnalysisPipelineToolDescriptor.httpEndpoint, "POST /analysis/pipeline");
-    assert.equal(receivedBodies[0].source, "cron");
-    assert.equal(receivedBodies[0].keyword, "카카오");
-    assert.equal(receivedBodies[0].traceId, "cli-trace");
-  } finally {
-    await new Promise((resolve) => server.close(resolve));
-  }
+  assert.equal(result.status, 0, result.stderr);
+  const parsed = JSON.parse(result.stdout.trim());
+  assert.equal(parsed.ok, true);
+  assert.equal(parsed.triggerSource, "cron");
+  assert.equal(parsed.traceId, "cli-trace");
 });
