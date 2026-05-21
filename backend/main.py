@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
 
 from backend.agent_client import AgentServiceError
-from backend.agent_service import agent_failure_envelope, answer_qa_with_agent, attach_agent_report
+from backend.agent_service import agent_failure_envelope, answer_qa_with_agent
 from backend.analyzer.pipeline import CONTRACT_VERSION, run_pipeline_request
 from backend.analyzer.qa import analyze_bundle
 from backend.collector.normalize import (
@@ -16,6 +16,13 @@ from backend.collector.normalize import (
     build_normalized_bundle,
 )
 from backend.collector.runtime_normalize import build_runtime_normalized_bundle
+from backend.report_views import (
+    build_manual_check_response,
+    build_report_detail_response,
+    build_report_list_response,
+    report_failure,
+    resolve_report_view,
+)
 
 
 def _typed_pipeline_failure(
@@ -176,48 +183,42 @@ async def trigger_analysis_pipeline(request: Request):
 async def create_report(request: Request):
     try:
         payload, _empty_body = await _read_pipeline_trigger_payload(request)
-        pipeline_request, default_used = _resolve_pipeline_trigger_request(payload)
-        response = await run_in_threadpool(
-            run_pipeline_request,
-            pipeline_request,
-            trace_id=pipeline_request.get("traceId"),
-        )
-        if default_used and response.get("ok"):
-            response = _append_route_default_evidence(response, "카카오")
-        if not response.get("ok"):
+        view = resolve_report_view(payload)
+        if view == "report-list":
+            response = build_report_list_response(payload)
+        elif view == "manual-check":
+            response = build_manual_check_response(payload)
+        else:
+            response = await run_in_threadpool(build_report_detail_response, payload)
+
+        if response.get("ok") is False:
             return JSONResponse(content=response, status_code=_pipeline_status_code(response))
-        response = await run_in_threadpool(attach_agent_report, response)
         return JSONResponse(content=response, status_code=200)
-    except ValueError as exc:
-        source = "user"
-        try:
-            payload, _ = await _read_pipeline_trigger_payload(request)
-            source = str(payload.get("source") or "user") if isinstance(payload, dict) else "user"
-        except Exception:
-            pass
+    except OverflowError as exc:
         return JSONResponse(
-            content=_typed_pipeline_failure("invalid_request", str(exc), source=source),
+            content=report_failure("batch_limit_exceeded", str(exc)),
+            status_code=400,
+        )
+    except ValueError as exc:
+        return JSONResponse(
+            content=report_failure("invalid_request", str(exc)),
             status_code=400,
         )
     except AgentServiceError as exc:
         return JSONResponse(
             content=agent_failure_envelope(
                 exc,
-                trace_id=locals().get("response", {}).get("traceId")
-                or locals().get("pipeline_request", {}).get("traceId")
-                or str(uuid4()),
+                trace_id=locals().get("payload", {}).get("traceId") or str(uuid4()),
                 contract_version=CONTRACT_VERSION,
-                observed_at=locals().get("response", {}).get("observedAt")
-                or datetime.now(UTC).isoformat().replace("+00:00", "Z"),
-                source=locals().get("response", {}).get("triggerSource")
-                or locals().get("pipeline_request", {}).get("source", "user"),
+                observed_at=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+                source=locals().get("payload", {}).get("source", "user"),
             ),
             status_code=exc.status_code,
         )
     except Exception as exc:
         return JSONResponse(
-            content=_typed_pipeline_failure("pipeline_trigger_failed", str(exc), source="user"),
-            status_code=200,
+            content=report_failure("reports_route_failed", str(exc)),
+            status_code=500,
         )
 
 

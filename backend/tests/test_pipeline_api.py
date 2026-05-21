@@ -117,7 +117,7 @@ def test_pipeline_trigger_explicit_corp_code_wins_over_default(monkeypatch):
     ]
 
 
-def test_api_v1_reports_reuses_pipeline_contract(monkeypatch):
+def test_api_v1_reports_detail_returns_view_discriminated_contract(monkeypatch):
     calls: list[dict] = []
 
     def fake_run_pipeline_request(request: dict, *, trace_id: str | None = None):
@@ -125,12 +125,12 @@ def test_api_v1_reports_reuses_pipeline_contract(monkeypatch):
         return _success_envelope(trace_id=trace_id or "report-trace", source=request["source"])
 
     monkeypatch.setattr(
-        "backend.main.run_pipeline_request",
+        "backend.report_views.run_pipeline_request",
         fake_run_pipeline_request,
         raising=False,
     )
     monkeypatch.setattr(
-        "backend.main.attach_agent_report",
+        "backend.report_views.attach_agent_report",
         lambda response: {
             **response,
             "evidence": response["evidence"] + [{"source": "pi_agent_http"}],
@@ -138,47 +138,60 @@ def test_api_v1_reports_reuses_pipeline_contract(monkeypatch):
         raising=False,
     )
 
+    response = TestClient(app).post(
+        "/api/v1/reports", json={"view": "report-detail", "corpCode": "00258801"}
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["view"] == "report-detail"
+    assert payload["report"]["corpCode"] == "00258801"
+    assert payload["report"]["riskLevel"] == "caution"
+    assert payload["fallback"] == {"used": True, "reason": "cold_start_generated_detail"}
+    assert "ok" not in payload
+    assert "result" not in payload
+    assert calls == [{"source": "user", "contractVersion": "v1", "corpCode": "00258801"}]
+
+
+def test_api_v1_reports_list_cold_start_returns_explicit_fallback():
+    response = TestClient(app).post("/api/v1/reports", json={"view": "report-list"})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload == {
+        "view": "report-list",
+        "reports": [],
+        "fallback": {"used": True, "reason": "cold_start_no_cached_reports"},
+    }
+
+
+def test_api_v1_reports_manual_check_accepts_twenty_and_rejects_twenty_one():
+    client = TestClient(app)
+    accepted = client.post(
+        "/api/v1/reports",
+        json={"view": "manual-check", "corpCodes": [f"{index:08d}" for index in range(20)]},
+    )
+    rejected = client.post(
+        "/api/v1/reports",
+        json={"view": "manual-check", "corpCodes": [f"{index:08d}" for index in range(21)]},
+    )
+
+    assert accepted.status_code == 200
+    assert accepted.json()["view"] == "manual-check"
+    assert accepted.json()["maxBatchSize"] == 20
+    assert accepted.json()["fallback"] == {"used": True, "reason": "read_only_manual_check"}
+    assert rejected.status_code == 400
+    assert rejected.json()["ok"] is False
+    assert rejected.json()["error"]["code"] == "batch_limit_exceeded"
+
+
+def test_api_v1_reports_requires_valid_view():
     response = TestClient(app).post("/api/v1/reports", json={"corpCode": "00258801"})
 
-    assert response.status_code == 200
+    assert response.status_code == 400
     payload = response.json()
-    assert payload["ok"] is True
-    assert payload["triggerSource"] == "user"
-    assert calls == [{"corpCode": "00258801", "source": "user", "contractVersion": "v1"}]
-
-
-def test_api_v1_reports_preserves_route_level_default_evidence(monkeypatch):
-    def fake_run_pipeline_request(request: dict, *, trace_id: str | None = None):
-        return _success_envelope(
-            trace_id=trace_id or "report-default-trace",
-            source=request["source"],
-        )
-
-    monkeypatch.setattr(
-        "backend.main.run_pipeline_request",
-        fake_run_pipeline_request,
-        raising=False,
-    )
-    monkeypatch.setattr(
-        "backend.main.attach_agent_report",
-        lambda response: {
-            **response,
-            "evidence": response["evidence"] + [{"source": "pi_agent_http"}],
-        },
-        raising=False,
-    )
-
-    response = TestClient(app).post("/api/v1/reports")
-
-    assert response.status_code == 200
-    payload = response.json()
-    assert payload["ok"] is True
-    assert any(
-        item.get("source") == "pipeline_trigger_route"
-        and item.get("defaultUsed") is True
-        and item.get("defaultKeyword") == "카카오"
-        for item in payload["evidence"]
-    )
+    assert payload["ok"] is False
+    assert payload["error"]["code"] == "invalid_request"
 
 
 def test_pipeline_trigger_exception_maps_to_typed_failure(monkeypatch):
@@ -334,7 +347,7 @@ def test_api_v1_reports_returns_typed_agent_failure_without_fallback(monkeypatch
     from backend.agent_client import AgentServiceError
 
     monkeypatch.setattr(
-        "backend.main.run_pipeline_request",
+        "backend.report_views.run_pipeline_request",
         lambda request, *, trace_id=None: _success_envelope(
             trace_id=trace_id or "agent-failure-trace",
             source=request["source"],
@@ -351,12 +364,15 @@ def test_api_v1_reports_returns_typed_agent_failure_without_fallback(monkeypatch
         )
 
     monkeypatch.setattr(
-        "backend.main.attach_agent_report",
+        "backend.report_views.attach_agent_report",
         fake_attach_agent_report,
         raising=False,
     )
 
-    response = TestClient(app).post("/api/v1/reports", json={"corpCode": "00258801"})
+    response = TestClient(app).post(
+        "/api/v1/reports",
+        json={"view": "report-detail", "corpCode": "00258801", "traceId": "agent-failure-trace"},
+    )
 
     assert response.status_code == 503
     payload = response.json()
