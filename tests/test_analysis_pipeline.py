@@ -55,12 +55,15 @@ def make_bundle() -> NormalizedDataBundle:
 
 class AnalysisPipelineTests(unittest.TestCase):
     def test_analyze_bundle_builds_machine_readable_result(self) -> None:
-        with patch(
-            "backend.analyzer.solar_step1.chat_json",
-            return_value={"explanations": {}},
-        ), patch(
-            "backend.analyzer.solar_step2.chat_json",
-            return_value={"warning_report": "위험도가 높아 경고 리포트를 제공합니다."},
+        with (
+            patch(
+                "backend.analyzer.solar_step1.chat_json",
+                return_value={"explanations": {}},
+            ),
+            patch(
+                "backend.analyzer.solar_step2.chat_json",
+                return_value={"warning_report": "위험도가 높아 경고 리포트를 제공합니다."},
+            ),
         ):
             result = analyze_bundle(make_bundle())
 
@@ -86,12 +89,15 @@ class AnalysisPipelineTests(unittest.TestCase):
         builder.assert_called_once_with(keyword=None, corp_code="00258801")
 
     def test_run_pipeline_request_returns_typed_failure_when_analyzer_raises(self) -> None:
-        with patch(
-            "backend.analyzer.pipeline.build_runtime_normalized_bundle",
-            return_value=make_bundle(),
-        ), patch(
-            "backend.analyzer.pipeline.analyze_bundle",
-            side_effect=RuntimeError("analysis exploded"),
+        with (
+            patch(
+                "backend.analyzer.pipeline.build_runtime_normalized_bundle",
+                return_value=make_bundle(),
+            ),
+            patch(
+                "backend.analyzer.pipeline.analyze_bundle",
+                side_effect=RuntimeError("analysis exploded"),
+            ),
         ):
             result = run_pipeline_request({"source": "cron", "keyword": "카카오"}, trace_id="trace")
 

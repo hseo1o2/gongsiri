@@ -17,25 +17,35 @@ from backend.schemas.bundle import (
     PriceVolumeData,
 )
 
-MOCK_STEP1_RESPONSE = json.dumps({
-    "explanations": {
-        "business-purpose-change": "정관 변경 공시가 감지되어 사업목적 전환 가능성이 있습니다.",
-        "hot-theme-following": "AI 테마 키워드가 반복 언급되고 있어 테마 후행 편승 가능성이 있습니다.",
-        "capital-structure-change": "전환사채 발행으로 자본구조 변경 위험이 있습니다.",
-        "abnormal-price-surge": "월간 수익률 55% 및 거래량 4.2배 급증으로 비정상 급등입니다.",
-        "risky-history": "CB 발행 이력이 감지되어 위험 이력이 존재합니다.",
-        "performance-divergence": "재무 데이터 없이 주가가 급등하여 실적 괴리가 의심됩니다.",
+MOCK_STEP1_RESPONSE = json.dumps(
+    {
+        "explanations": {
+            "business-purpose-change": "정관 변경 공시가 감지되어 사업목적 전환 가능성이 있습니다.",
+            "hot-theme-following": (
+                "AI 테마 키워드가 반복 언급되고 있어 테마 후행 편승 가능성이 있습니다."
+            ),
+            "capital-structure-change": "전환사채 발행으로 자본구조 변경 위험이 있습니다.",
+            "abnormal-price-surge": "월간 수익률 55% 및 거래량 4.2배 급증으로 비정상 급등입니다.",
+            "risky-history": "CB 발행 이력이 감지되어 위험 이력이 존재합니다.",
+            "performance-divergence": "재무 데이터 없이 주가가 급등하여 실적 괴리가 의심됩니다.",
+        }
     }
-})
+)
 
-MOCK_STEP2_NORMAL_RESPONSE = json.dumps({
-    "short_term_report": "단기적으로 CB 발행과 주가 급등이 겹쳐 변동성이 높습니다.",
-    "long_term_report": "장기적으로 재무 근거 없는 급등은 지속되기 어렵습니다.",
-})
+MOCK_STEP2_NORMAL_RESPONSE = json.dumps(
+    {
+        "short_term_report": "단기적으로 CB 발행과 주가 급등이 겹쳐 변동성이 높습니다.",
+        "long_term_report": "장기적으로 재무 근거 없는 급등은 지속되기 어렵습니다.",
+    }
+)
 
-MOCK_STEP2_WARNING_RESPONSE = json.dumps({
-    "warning_report": "위험도 4점 이상으로 투자 주의가 필요합니다. CB·급등·재무 공백이 동시 감지되었습니다.",
-})
+MOCK_STEP2_WARNING_RESPONSE = json.dumps(
+    {
+        "warning_report": (
+            "위험도 4점 이상으로 투자 주의가 필요합니다. CB·급등·재무 공백이 동시 감지되었습니다."
+        ),
+    }
+)
 
 MOCK_QA_RESPONSE = "전환사채 발행은 주식 희석 가능성이 있어 주가에 부정적 영향을 줄 수 있습니다."
 
@@ -85,14 +95,21 @@ class SolarStep1Tests(unittest.TestCase):
         self.assertGreaterEqual(result.risk_score, 0)
         self.assertIn(result.risk_level, {"normal", "caution", "high"})
         for item in result.checklist:
-            self.assertIn(item.id, {
-                "business-purpose-change", "hot-theme-following",
-                "capital-structure-change", "abnormal-price-surge",
-                "risky-history", "performance-divergence",
-            })
+            self.assertIn(
+                item.id,
+                {
+                    "business-purpose-change",
+                    "hot-theme-following",
+                    "capital-structure-change",
+                    "abnormal-price-surge",
+                    "risky-history",
+                    "performance-divergence",
+                },
+            )
 
     def test_run_step1_tolerates_solar_api_error(self) -> None:
         from backend.analyzer.solar_client import SolarAPIError
+
         with patch(
             "backend.analyzer.solar_step1.chat_json",
             side_effect=SolarAPIError("API 실패"),
@@ -111,7 +128,9 @@ class SolarStep1Tests(unittest.TestCase):
 
 
 class SolarStep2Tests(unittest.TestCase):
-    def _step1_result(self, *, high_risk: bool = False) -> tuple[NormalizedDataBundle, AnalysisResult]:
+    def _step1_result(
+        self, *, high_risk: bool = False
+    ) -> tuple[NormalizedDataBundle, AnalysisResult]:
         bundle = _make_bundle(high_risk=high_risk)
         with patch("backend.analyzer.solar_step1.chat_json", return_value={"explanations": {}}):
             result = run_step1(bundle)
@@ -146,6 +165,7 @@ class SolarStep2Tests(unittest.TestCase):
 
     def test_run_step2_tolerates_solar_api_error(self) -> None:
         from backend.analyzer.solar_client import SolarAPIError
+
         bundle, result = self._step1_result()
         with patch(
             "backend.analyzer.solar_step2.chat_json",
@@ -159,12 +179,15 @@ class SolarStep2Tests(unittest.TestCase):
 class AnalyzeBundleIntegrationTests(unittest.TestCase):
     def test_analyze_bundle_runs_step1_and_step2(self) -> None:
         bundle = _make_bundle()
-        with patch(
-            "backend.analyzer.solar_step1.chat_json",
-            return_value=json.loads(MOCK_STEP1_RESPONSE),
-        ), patch(
-            "backend.analyzer.solar_step2.chat_json",
-            return_value=json.loads(MOCK_STEP2_NORMAL_RESPONSE),
+        with (
+            patch(
+                "backend.analyzer.solar_step1.chat_json",
+                return_value=json.loads(MOCK_STEP1_RESPONSE),
+            ),
+            patch(
+                "backend.analyzer.solar_step2.chat_json",
+                return_value=json.loads(MOCK_STEP2_NORMAL_RESPONSE),
+            ),
         ):
             result = analyze_bundle(bundle)
 
@@ -176,12 +199,15 @@ class AnalyzeBundleIntegrationTests(unittest.TestCase):
 class AskQATests(unittest.TestCase):
     def test_ask_qa_returns_string_answer(self) -> None:
         bundle = _make_bundle()
-        with patch(
-            "backend.analyzer.solar_step1.chat_json",
-            return_value=json.loads(MOCK_STEP1_RESPONSE),
-        ), patch(
-            "backend.analyzer.solar_step2.chat_json",
-            return_value=json.loads(MOCK_STEP2_NORMAL_RESPONSE),
+        with (
+            patch(
+                "backend.analyzer.solar_step1.chat_json",
+                return_value=json.loads(MOCK_STEP1_RESPONSE),
+            ),
+            patch(
+                "backend.analyzer.solar_step2.chat_json",
+                return_value=json.loads(MOCK_STEP2_NORMAL_RESPONSE),
+            ),
         ):
             analysis = analyze_bundle(bundle)
 
@@ -193,13 +219,17 @@ class AskQATests(unittest.TestCase):
 
     def test_ask_qa_tolerates_solar_api_error(self) -> None:
         from backend.analyzer.solar_client import SolarAPIError
+
         bundle = _make_bundle()
-        with patch(
-            "backend.analyzer.solar_step1.chat_json",
-            return_value={"explanations": {}},
-        ), patch(
-            "backend.analyzer.solar_step2.chat_json",
-            return_value=json.loads(MOCK_STEP2_NORMAL_RESPONSE),
+        with (
+            patch(
+                "backend.analyzer.solar_step1.chat_json",
+                return_value={"explanations": {}},
+            ),
+            patch(
+                "backend.analyzer.solar_step2.chat_json",
+                return_value=json.loads(MOCK_STEP2_NORMAL_RESPONSE),
+            ),
         ):
             analysis = analyze_bundle(bundle)
 
