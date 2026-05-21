@@ -1,5 +1,6 @@
 from json import JSONDecodeError
 from typing import Any
+from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -11,11 +12,13 @@ from backend.collector.normalize import (
 )
 
 
-def _typed_pipeline_failure(code: str, message: str, *, source: str = "user") -> dict[str, Any]:
+def _typed_pipeline_failure(
+    code: str, message: str, *, source: str = "user", trace_id: str | None = None
+) -> dict[str, Any]:
     return {
         "ok": False,
         "triggerSource": source,
-        "traceId": "",
+        "traceId": trace_id or str(uuid4()),
         "contractVersion": CONTRACT_VERSION,
         "observedAt": "",
         "error": {"code": code, "message": message},
@@ -50,6 +53,7 @@ def _append_route_default_evidence(result: dict[str, Any], default_keyword: str)
         }
     )
     return {**result, "evidence": evidence}
+
 
 app = FastAPI(title="Gongsiri A Data Pipeline")
 
@@ -98,3 +102,48 @@ def _pipeline_status_code(response: dict[str, Any]) -> int:
 def run_analysis_pipeline(request: dict[str, Any]):
     response = run_pipeline_request(request, trace_id=request.get("traceId"))
     return JSONResponse(content=response, status_code=_pipeline_status_code(response))
+
+
+def _resolve_pipeline_trigger_request(payload: dict[str, Any]) -> tuple[dict[str, Any], bool]:
+    pipeline_request = dict(payload)
+    default_used = False
+
+    if not pipeline_request.get("source"):
+        pipeline_request["source"] = "user"
+    if not pipeline_request.get("contractVersion"):
+        pipeline_request["contractVersion"] = CONTRACT_VERSION
+    if not pipeline_request.get("keyword") and not pipeline_request.get("corpCode"):
+        pipeline_request["keyword"] = "카카오"
+        default_used = True
+
+    return pipeline_request, default_used
+
+
+@app.post("/pipeline/trigger")
+async def trigger_analysis_pipeline(request: Request):
+    try:
+        payload, _empty_body = await _read_pipeline_trigger_payload(request)
+        pipeline_request, default_used = _resolve_pipeline_trigger_request(payload)
+        response = run_pipeline_request(
+            pipeline_request,
+            trace_id=pipeline_request.get("traceId"),
+        )
+        if default_used and response.get("ok"):
+            response = _append_route_default_evidence(response, "카카오")
+        return JSONResponse(content=response, status_code=200)
+    except ValueError as exc:
+        source = "user"
+        try:
+            payload, _ = await _read_pipeline_trigger_payload(request)
+            source = str(payload.get("source") or "user") if isinstance(payload, dict) else "user"
+        except Exception:
+            pass
+        return JSONResponse(
+            content=_typed_pipeline_failure("invalid_request", str(exc), source=source),
+            status_code=400,
+        )
+    except Exception as exc:
+        return JSONResponse(
+            content=_typed_pipeline_failure("pipeline_trigger_failed", str(exc), source="user"),
+            status_code=200,
+        )

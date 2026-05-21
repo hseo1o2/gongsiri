@@ -18,6 +18,7 @@ type FetchLike = (
 ) => Promise<FetchResponseLike>;
 
 type CreateRunAnalysisPipelineToolOptions = {
+  apiUrl?: string;
   endpointUrl?: string;
   fetchImpl?: FetchLike;
 };
@@ -26,16 +27,16 @@ export type PipelineToolDefinition = {
   descriptor: {
     name: typeof RUN_ANALYSIS_PIPELINE_TOOL_NAME;
     description: string;
-    httpEndpoint: "POST /analysis/pipeline";
+    endpoint: "POST /pipeline/trigger";
   };
   invoke(request: PipelineTriggerRequest): Promise<PipelineResult>;
 };
 
 const DEFAULT_CONTRACT_VERSION = "v1" as const;
-const DEFAULT_ENDPOINT_URL = "http://127.0.0.1:8000/analysis/pipeline";
+const DEFAULT_ENDPOINT_URL = "http://127.0.0.1:8000/pipeline/trigger";
 
 const resolveEndpointUrl = (options: CreateRunAnalysisPipelineToolOptions): string =>
-  options.endpointUrl ?? process.env.GONGSIRI_PIPELINE_API_URL ?? DEFAULT_ENDPOINT_URL;
+  options.apiUrl ?? options.endpointUrl ?? process.env.GONGSIRI_PIPELINE_API_URL ?? DEFAULT_ENDPOINT_URL;
 
 const resolveFetch = (options: CreateRunAnalysisPipelineToolOptions): FetchLike => {
   if (options.fetchImpl) {
@@ -82,7 +83,7 @@ const isPipelineResult = (value: unknown): value is PipelineResult => {
 export const runAnalysisPipelineToolDescriptor: PipelineToolDefinition["descriptor"] = {
   name: RUN_ANALYSIS_PIPELINE_TOOL_NAME,
   description: "Normalize -> analyze pipeline FastAPI HTTP bridge for the Pi pipeline milestone.",
-  httpEndpoint: "POST /analysis/pipeline"
+  endpoint: "POST /pipeline/trigger"
 };
 
 export const createRunAnalysisPipelineTool = (
@@ -101,8 +102,8 @@ export const createRunAnalysisPipelineTool = (
       response = await resolveFetch(options)(endpointUrl, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json"
+          "content-type": "application/json",
+          accept: "application/json"
         },
         body: JSON.stringify(payload)
       });
@@ -115,6 +116,14 @@ export const createRunAnalysisPipelineTool = (
     }
 
     const raw = (await response.text()).trim();
+
+    if (!response.ok) {
+      return buildFailure(
+        "pipeline_http_error",
+        `Pipeline HTTP ${response.status}${response.statusText ? ` ${response.statusText}` : ""}${raw ? `: ${raw}` : ""}`,
+        request
+      );
+    }
 
     if (!raw) {
       return buildFailure(
