@@ -84,7 +84,6 @@ def save_bundle(keyword: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-
 def _pipeline_status_code(response: dict[str, Any]) -> int:
     if response.get("ok"):
         return 200
