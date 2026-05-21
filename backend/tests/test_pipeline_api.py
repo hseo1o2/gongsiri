@@ -295,6 +295,5 @@ def test_qa_route_requires_question_and_identifier():
     missing_identifier = client.post("/qa", json={"question": "질문"})
     assert missing_identifier.status_code == 400
     assert (
-        missing_identifier.json()["detail"]
-        == "corpCode 또는 keyword 중 하나는 반드시 필요합니다."
+        missing_identifier.json()["detail"] == "corpCode 또는 keyword 중 하나는 반드시 필요합니다."
     )
