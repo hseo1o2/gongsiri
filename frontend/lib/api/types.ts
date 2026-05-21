@@ -81,9 +81,12 @@ export type ReportsErrorCode =
   | 'agent_http_error'
   | 'missing_env'
   | 'pi_agent_error'
+  | 'corp_code_unresolved'
+  | 'analysis_failed'
 
 export interface ReportsErrorResponse {
   ok: false
+  triggerSource?: string
   traceId: string
   contractVersion: 'v1'
   observedAt: string

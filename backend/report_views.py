@@ -42,28 +42,10 @@ def resolve_report_view(payload: dict[str, Any]) -> str:
 
 
 def build_report_list_response(payload: dict[str, Any]) -> dict[str, Any]:
-    corp_codes = _corp_codes(payload)
-    if not corp_codes:
-        return {
-            "view": "report-list",
-            "reports": [],
-            "fallback": {"used": True, "reason": "cold_start_no_cached_reports"},
-        }
-
-    reports = []
-    for corp_code in corp_codes:
-        reports.append(
-            {
-                "corpCode": corp_code,
-                "corpName": corp_code,
-                "analyzedAt": observed_at(),
-                "riskLevel": "normal",
-                "riskScore": 0,
-            }
-        )
+    _corp_codes(payload)
     return {
         "view": "report-list",
-        "reports": reports,
+        "reports": [],
         "fallback": {"used": True, "reason": "cold_start_no_cached_reports"},
     }
 

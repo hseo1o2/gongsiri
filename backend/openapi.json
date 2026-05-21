@@ -421,7 +421,9 @@
                   "agent_malformed_response",
                   "agent_http_error",
                   "missing_env",
-                  "pi_agent_error"
+                  "pi_agent_error",
+                  "corp_code_unresolved",
+                  "analysis_failed"
                 ]
               },
               "message": {
@@ -440,6 +442,9 @@
               "type": "object",
               "additionalProperties": true
             }
+          },
+          "triggerSource": {
+            "type": "string"
           }
         },
         "required": [

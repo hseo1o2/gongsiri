@@ -453,3 +453,47 @@ def test_attach_agent_report_rejects_malformed_pi_success_without_report_text():
         assert any(item.get("endpoint") == "/report" for item in exc.evidence)
     else:
         raise AssertionError("malformed Pi report success must not fall back to deterministic text")
+
+
+def test_api_v1_reports_detail_pipeline_failure_matches_typed_error_contract(monkeypatch):
+    def fake_run_pipeline_request(request: dict, *, trace_id: str | None = None):
+        return {
+            "ok": False,
+            "triggerSource": request["source"],
+            "traceId": trace_id or "pipeline-failure-trace",
+            "contractVersion": "v1",
+            "observedAt": "2026-05-21T00:00:00Z",
+            "error": {"code": "corp_code_unresolved", "message": "corp code를 확인할 수 없습니다."},
+            "evidence": [],
+        }
+
+    monkeypatch.setattr(
+        "backend.report_views.run_pipeline_request",
+        fake_run_pipeline_request,
+        raising=False,
+    )
+
+    response = TestClient(app).post(
+        "/api/v1/reports",
+        json={"view": "report-detail", "corpCode": "99999999", "traceId": "pipeline-failure-trace"},
+    )
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["ok"] is False
+    assert payload["triggerSource"] == "user"
+    assert payload["error"]["code"] == "corp_code_unresolved"
+
+
+def test_api_v1_reports_list_does_not_fabricate_summaries_without_persistence():
+    response = TestClient(app).post(
+        "/api/v1/reports",
+        json={"view": "report-list", "corpCodes": ["00258801", "00126380"]},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "view": "report-list",
+        "reports": [],
+        "fallback": {"used": True, "reason": "cold_start_no_cached_reports"},
+    }
