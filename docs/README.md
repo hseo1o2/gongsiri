@@ -13,3 +13,4 @@ Pi bootstrap milestone의 repo-local source of truth 문서:
 현재 milestone 확장:
 - G001 — bootstrap runtime + disclosure bridge
 - G002 — trigger source(`user | system | cron`) + manual trigger + scheduler surface + local checkpoint detection
+- `10-agent-pipeline-takeover-backlog.md` — deferred backlog and guardrails for the agent pipeline takeover
