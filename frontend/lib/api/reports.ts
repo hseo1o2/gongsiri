@@ -1,5 +1,6 @@
 import type { AnalysisResult, ChecklistItem } from '@/lib/types'
 import type {
+  ChecklistItemContract,
   ManualCheckResponse,
   ReportDetailResponse,
   ReportListResponse,
@@ -62,11 +63,15 @@ export async function fetchReportDetail(corpCode: string): Promise<ReportDetailR
     corpCode,
   }, { cache: 'no-store' })
 
-  if (!isTypedReportDetailResponse(payload)) {
-    throw new Error('지원되지 않는 리포트 상세 응답 형식입니다.')
+  if (isTypedReportDetailResponse(payload)) {
+    return payload
   }
 
-  return payload
+  if (isFailureEnvelope(payload)) {
+    throw new Error(payload.error?.message ?? '리포트 상세를 불러올 수 없습니다.')
+  }
+
+  throw new Error('지원되지 않는 리포트 상세 응답 형식입니다.')
 }
 
 export async function postManualCheck(corpCodes: string[]): Promise<ManualCheckResponse> {
@@ -78,42 +83,6 @@ export async function postManualCheck(corpCodes: string[]): Promise<ManualCheckR
     view: 'manual-check',
     corpCodes,
   })) as ManualCheckResponse
-}
-
-interface PipelineChecklistItem {
-  id: string
-  title: string
-  status: ChecklistItem['status']
-  score: number
-  reason: string
-  evidence: string[]
-  solar_explanation?: string
-}
-
-interface PipelineReportEnvelope {
-  ok: boolean
-  observedAt?: string
-  error?: {
-    code?: string
-    message?: string
-  }
-  result?: {
-    normalized_data_bundle?: {
-      company?: {
-        corp_code?: string
-        corp_name?: string
-      }
-    }
-    analysis_result?: {
-      risk_score: number
-      risk_level: AnalysisResult['risk_level']
-      checklist: PipelineChecklistItem[]
-      short_term_report: string
-      long_term_report?: string
-      disclaimer: string
-      missing_evidence: string[]
-    }
-  }
 }
 
 export interface ReportDetailViewModel {
@@ -139,11 +108,11 @@ function isTypedReportDetailResponse(payload: unknown): payload is ReportDetailR
   return isObject(payload) && payload.view === 'report-detail' && isObject(payload.report)
 }
 
-function isPipelineReportEnvelope(payload: unknown): payload is PipelineReportEnvelope {
-  return isObject(payload) && typeof payload.ok === 'boolean'
+function isFailureEnvelope(payload: unknown): payload is { ok: false; error?: { message?: string } } {
+  return isObject(payload) && payload.ok === false
 }
 
-function normalizeChecklist(items: PipelineChecklistItem[] | ChecklistItem[]): ChecklistItem[] {
+function normalizeChecklist(items: ChecklistItemContract[] | ChecklistItem[]): ChecklistItem[] {
   return items.map(item => ({
     id: item.id,
     title: item.title,
@@ -182,31 +151,8 @@ export async function fetchReportDetailViewModel(corpCode: string): Promise<Repo
     }
   }
 
-  if (isPipelineReportEnvelope(payload)) {
-    if (!payload.ok || !payload.result?.analysis_result) {
-      throw new Error(payload.error?.message ?? '리포트 상세를 불러올 수 없습니다.')
-    }
-
-    const company = payload.result.normalized_data_bundle?.company
-    const analysis = payload.result.analysis_result
-
-    return {
-      corpCode: company?.corp_code ?? corpCode,
-      corpName: company?.corp_name ?? corpCode,
-      analyzedAt: payload.observedAt ?? '',
-      result: {
-        risk_score: analysis.risk_score,
-        risk_level: analysis.risk_level,
-        checklist: normalizeChecklist(analysis.checklist),
-        short_term_report: analysis.short_term_report,
-        long_term_report: analysis.long_term_report ?? '',
-        disclaimer: analysis.disclaimer,
-        missing_evidence: analysis.missing_evidence,
-      },
-      fallback: {
-        used: false,
-      },
-    }
+  if (isFailureEnvelope(payload)) {
+    throw new Error(payload.error?.message ?? '리포트 상세를 불러올 수 없습니다.')
   }
 
   throw new Error('지원되지 않는 리포트 상세 응답 형식입니다.')

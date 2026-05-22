@@ -116,7 +116,11 @@ class FetchDisclosuresCliTests(unittest.TestCase):
             text=True,
             capture_output=True,
             cwd=REPO_ROOT,
-            env={"PATH": os.environ.get("PATH", ""), "PYTHONPATH": str(REPO_ROOT)},
+            env={
+                "PATH": os.environ.get("PATH", ""),
+                "PYTHONPATH": str(REPO_ROOT),
+                "PYTHON_DOTENV_DISABLED": "1",
+            },
         )
 
         self.assertEqual(result.returncode, 1)

@@ -64,6 +64,36 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Reports route or backend analysis contract failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Malformed Pi agent response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Pi agent service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -149,7 +179,8 @@
         "type": "object",
         "properties": {
           "corpCode": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^\\d{8}$"
           },
           "corpName": {
             "type": "string"
@@ -180,7 +211,8 @@
         "type": "object",
         "properties": {
           "corpCode": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^\\d{8}$"
           },
           "corpName": {
             "type": "string"
@@ -241,7 +273,8 @@
           "corpCodes": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{8}$"
             },
             "maxItems": 20
           }
@@ -258,7 +291,8 @@
             "const": "report-detail"
           },
           "corpCode": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^\\d{8}$"
           }
         },
         "required": [
@@ -276,7 +310,8 @@
           "corpCodes": {
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{8}$"
             },
             "minItems": 1,
             "maxItems": 20
@@ -362,6 +397,22 @@
       "ErrorResponse": {
         "type": "object",
         "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": false
+          },
+          "traceId": {
+            "type": "string"
+          },
+          "contractVersion": {
+            "type": "string",
+            "enum": [
+              "v1"
+            ]
+          },
+          "observedAt": {
+            "type": "string"
+          },
           "error": {
             "type": "object",
             "properties": {
@@ -369,7 +420,15 @@
                 "type": "string",
                 "enum": [
                   "invalid_request",
-                  "batch_limit_exceeded"
+                  "batch_limit_exceeded",
+                  "reports_route_failed",
+                  "agent_unavailable",
+                  "agent_malformed_response",
+                  "agent_http_error",
+                  "missing_env",
+                  "pi_agent_error",
+                  "corp_code_unresolved",
+                  "analysis_failed"
                 ]
               },
               "message": {
@@ -381,10 +440,25 @@
               "message"
             ],
             "additionalProperties": false
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "triggerSource": {
+            "type": "string"
           }
         },
         "required": [
-          "error"
+          "ok",
+          "traceId",
+          "contractVersion",
+          "observedAt",
+          "error",
+          "evidence"
         ],
         "additionalProperties": false
       }

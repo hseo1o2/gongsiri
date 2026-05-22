@@ -72,11 +72,29 @@ export interface ManualCheckResponse {
   fallback: FallbackInfo
 }
 
+export type ReportsErrorCode =
+  | 'invalid_request'
+  | 'batch_limit_exceeded'
+  | 'reports_route_failed'
+  | 'agent_unavailable'
+  | 'agent_malformed_response'
+  | 'agent_http_error'
+  | 'missing_env'
+  | 'pi_agent_error'
+  | 'corp_code_unresolved'
+  | 'analysis_failed'
+
 export interface ReportsErrorResponse {
+  ok: false
+  triggerSource?: string
+  traceId: string
+  contractVersion: 'v1'
+  observedAt: string
   error: {
-    code: 'invalid_request' | 'batch_limit_exceeded'
+    code: ReportsErrorCode
     message: string
   }
+  evidence: Record<string, unknown>[]
 }
 
 export type ReportsResponse =

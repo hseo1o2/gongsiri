@@ -117,7 +117,7 @@ def test_pipeline_trigger_explicit_corp_code_wins_over_default(monkeypatch):
     ]
 
 
-def test_api_v1_reports_reuses_pipeline_contract(monkeypatch):
+def test_api_v1_reports_detail_returns_view_discriminated_contract(monkeypatch):
     calls: list[dict] = []
 
     def fake_run_pipeline_request(request: dict, *, trace_id: str | None = None):
@@ -125,12 +125,12 @@ def test_api_v1_reports_reuses_pipeline_contract(monkeypatch):
         return _success_envelope(trace_id=trace_id or "report-trace", source=request["source"])
 
     monkeypatch.setattr(
-        "backend.main.run_pipeline_request",
+        "backend.report_views.run_pipeline_request",
         fake_run_pipeline_request,
         raising=False,
     )
     monkeypatch.setattr(
-        "backend.main.attach_agent_report",
+        "backend.report_views.attach_agent_report",
         lambda response: {
             **response,
             "evidence": response["evidence"] + [{"source": "pi_agent_http"}],
@@ -138,47 +138,82 @@ def test_api_v1_reports_reuses_pipeline_contract(monkeypatch):
         raising=False,
     )
 
+    response = TestClient(app).post(
+        "/api/v1/reports", json={"view": "report-detail", "corpCode": "00258801"}
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["view"] == "report-detail"
+    assert payload["report"]["corpCode"] == "00258801"
+    assert payload["report"]["riskLevel"] == "caution"
+    assert payload["fallback"] == {"used": True, "reason": "cold_start_generated_detail"}
+    assert "ok" not in payload
+    assert "result" not in payload
+    assert calls == [{"source": "user", "contractVersion": "v1", "corpCode": "00258801"}]
+
+
+def test_api_v1_reports_list_cold_start_returns_explicit_fallback():
+    response = TestClient(app).post("/api/v1/reports", json={"view": "report-list"})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload == {
+        "view": "report-list",
+        "reports": [],
+        "fallback": {"used": True, "reason": "cold_start_no_cached_reports"},
+    }
+
+
+def test_api_v1_reports_manual_check_accepts_twenty_and_rejects_twenty_one():
+    client = TestClient(app)
+    accepted = client.post(
+        "/api/v1/reports",
+        json={"view": "manual-check", "corpCodes": [f"{index:08d}" for index in range(20)]},
+    )
+    rejected = client.post(
+        "/api/v1/reports",
+        json={"view": "manual-check", "corpCodes": [f"{index:08d}" for index in range(21)]},
+    )
+
+    assert accepted.status_code == 200
+    assert accepted.json()["view"] == "manual-check"
+    assert accepted.json()["maxBatchSize"] == 20
+    assert accepted.json()["fallback"] == {"used": True, "reason": "read_only_manual_check"}
+    assert rejected.status_code == 400
+    assert rejected.json()["ok"] is False
+    assert rejected.json()["error"]["code"] == "batch_limit_exceeded"
+
+
+def test_api_v1_reports_requires_valid_view():
     response = TestClient(app).post("/api/v1/reports", json={"corpCode": "00258801"})
 
-    assert response.status_code == 200
+    assert response.status_code == 400
     payload = response.json()
-    assert payload["ok"] is True
-    assert payload["triggerSource"] == "user"
-    assert calls == [{"corpCode": "00258801", "source": "user", "contractVersion": "v1"}]
+    assert payload["ok"] is False
+    assert payload["error"]["code"] == "invalid_request"
 
 
-def test_api_v1_reports_preserves_route_level_default_evidence(monkeypatch):
-    def fake_run_pipeline_request(request: dict, *, trace_id: str | None = None):
-        return _success_envelope(
-            trace_id=trace_id or "report-default-trace",
-            source=request["source"],
-        )
+def test_api_v1_reports_rejects_malformed_corp_code_without_pipeline(monkeypatch):
+    def fail_run_pipeline_request(*_args, **_kwargs):
+        raise AssertionError("malformed corpCode must fail before pipeline execution")
 
     monkeypatch.setattr(
-        "backend.main.run_pipeline_request",
-        fake_run_pipeline_request,
-        raising=False,
-    )
-    monkeypatch.setattr(
-        "backend.main.attach_agent_report",
-        lambda response: {
-            **response,
-            "evidence": response["evidence"] + [{"source": "pi_agent_http"}],
-        },
+        "backend.report_views.run_pipeline_request",
+        fail_run_pipeline_request,
         raising=False,
     )
 
-    response = TestClient(app).post("/api/v1/reports")
-
-    assert response.status_code == 200
-    payload = response.json()
-    assert payload["ok"] is True
-    assert any(
-        item.get("source") == "pipeline_trigger_route"
-        and item.get("defaultUsed") is True
-        and item.get("defaultKeyword") == "카카오"
-        for item in payload["evidence"]
+    response = TestClient(app).post(
+        "/api/v1/reports",
+        json={"view": "report-detail", "corpCode": "../../etc/passwd"},
     )
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["ok"] is False
+    assert payload["error"]["code"] == "invalid_request"
+    assert payload["error"]["message"] == "corpCode는 8자리 숫자 corpCode여야 합니다."
 
 
 def test_pipeline_trigger_exception_maps_to_typed_failure(monkeypatch):
@@ -321,20 +356,46 @@ def test_qa_route_requires_question_and_identifier():
 
     missing_question = client.post("/qa", json={"corpCode": "00258801"})
     assert missing_question.status_code == 400
-    assert missing_question.json()["detail"] == "question은 비어 있을 수 없습니다."
+    assert missing_question.json()["ok"] is False
+    assert missing_question.json()["error"]["code"] == "invalid_request"
+    assert missing_question.json()["error"]["message"] == "question은 비어 있을 수 없습니다."
 
     missing_identifier = client.post("/qa", json={"question": "질문"})
     assert missing_identifier.status_code == 400
+    assert missing_identifier.json()["ok"] is False
+    assert missing_identifier.json()["error"]["code"] == "invalid_request"
     assert (
-        missing_identifier.json()["detail"] == "corpCode 또는 keyword 중 하나는 반드시 필요합니다."
+        missing_identifier.json()["error"]["message"]
+        == "corpCode 또는 keyword 중 하나는 반드시 필요합니다."
     )
+
+
+def test_qa_route_rejects_malformed_corp_code_without_agent_call(monkeypatch):
+    def fail_build_runtime_normalized_bundle(**_kwargs):
+        raise AssertionError("malformed corpCode must fail before bundle construction")
+
+    monkeypatch.setattr(
+        "backend.main.build_runtime_normalized_bundle",
+        fail_build_runtime_normalized_bundle,
+        raising=False,
+    )
+
+    response = TestClient(app).post(
+        "/qa",
+        json={"corpCode": "../../etc/passwd", "question": "질문"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["ok"] is False
+    assert response.json()["error"]["code"] == "invalid_request"
+    assert response.json()["error"]["message"] == "corpCode는 8자리 숫자 corpCode여야 합니다."
 
 
 def test_api_v1_reports_returns_typed_agent_failure_without_fallback(monkeypatch):
     from backend.agent_client import AgentServiceError
 
     monkeypatch.setattr(
-        "backend.main.run_pipeline_request",
+        "backend.report_views.run_pipeline_request",
         lambda request, *, trace_id=None: _success_envelope(
             trace_id=trace_id or "agent-failure-trace",
             source=request["source"],
@@ -351,12 +412,15 @@ def test_api_v1_reports_returns_typed_agent_failure_without_fallback(monkeypatch
         )
 
     monkeypatch.setattr(
-        "backend.main.attach_agent_report",
+        "backend.report_views.attach_agent_report",
         fake_attach_agent_report,
         raising=False,
     )
 
-    response = TestClient(app).post("/api/v1/reports", json={"corpCode": "00258801"})
+    response = TestClient(app).post(
+        "/api/v1/reports",
+        json={"view": "report-detail", "corpCode": "00258801", "traceId": "agent-failure-trace"},
+    )
 
     assert response.status_code == 503
     payload = response.json()
@@ -411,3 +475,73 @@ def test_qa_route_returns_typed_agent_failure_without_solar_fallback(monkeypatch
         "message": "저 공시리가 agent service에 연결하지 못했습니다.",
     }
     assert payload["evidence"] == [{"source": "agent_http"}]
+
+
+def test_attach_agent_report_rejects_malformed_pi_success_without_report_text():
+    from backend.agent_client import AgentServiceError
+    from backend.agent_service import attach_agent_report
+
+    class FakeAgentClient:
+        def generate_report(self, payload: dict) -> dict:
+            return {
+                "ok": True,
+                "traceId": "malformed-report-trace",
+                "contractVersion": "v1",
+                "evidence": [{"source": "fake_agent"}],
+            }
+
+    try:
+        attach_agent_report(
+            _success_envelope(trace_id="malformed-report-trace"), client=FakeAgentClient()
+        )
+    except AgentServiceError as exc:
+        assert exc.code == "agent_malformed_response"
+        assert "저 공시리가" in exc.message
+        assert exc.status_code == 502
+        assert any(item.get("endpoint") == "/report" for item in exc.evidence)
+    else:
+        raise AssertionError("malformed Pi report success must not fall back to deterministic text")
+
+
+def test_api_v1_reports_detail_pipeline_failure_matches_typed_error_contract(monkeypatch):
+    def fake_run_pipeline_request(request: dict, *, trace_id: str | None = None):
+        return {
+            "ok": False,
+            "triggerSource": request["source"],
+            "traceId": trace_id or "pipeline-failure-trace",
+            "contractVersion": "v1",
+            "observedAt": "2026-05-21T00:00:00Z",
+            "error": {"code": "corp_code_unresolved", "message": "corp code를 확인할 수 없습니다."},
+            "evidence": [],
+        }
+
+    monkeypatch.setattr(
+        "backend.report_views.run_pipeline_request",
+        fake_run_pipeline_request,
+        raising=False,
+    )
+
+    response = TestClient(app).post(
+        "/api/v1/reports",
+        json={"view": "report-detail", "corpCode": "99999999", "traceId": "pipeline-failure-trace"},
+    )
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["ok"] is False
+    assert payload["triggerSource"] == "user"
+    assert payload["error"]["code"] == "corp_code_unresolved"
+
+
+def test_api_v1_reports_list_does_not_fabricate_summaries_without_persistence():
+    response = TestClient(app).post(
+        "/api/v1/reports",
+        json={"view": "report-list", "corpCodes": ["00258801", "00126380"]},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "view": "report-list",
+        "reports": [],
+        "fallback": {"used": True, "reason": "cold_start_no_cached_reports"},
+    }
