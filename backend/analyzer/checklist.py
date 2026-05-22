@@ -1,5 +1,14 @@
 from __future__ import annotations
 
+from backend.analyzer.checklist_support import (
+    disclosure_refs,
+    financial_refs,
+    find_hot_theme_mentions,
+    find_matching_disclosures,
+    latest_date,
+    news_refs,
+    price_refs,
+)
 from backend.schemas.analysis import ChecklistItem, RiskLevel
 from backend.schemas.bundle import NormalizedDataBundle
 
@@ -15,37 +24,11 @@ STRUCTURE_CHANGE_CATEGORIES = {
 }
 
 
-def _find_matching_disclosures(
-    bundle: NormalizedDataBundle, *, terms: tuple[str, ...]
-) -> list[str]:
-    matches: list[str] = []
-
-    for disclosure in bundle.disclosures:
-        haystack = " ".join(
-            [disclosure.report_nm, disclosure.category or "", disclosure.parsed_text or ""]
-        )
-        if any(term in haystack for term in terms):
-            matches.append(disclosure.report_nm)
-
-    return matches
-
-
-def _find_hot_theme_mentions(bundle: NormalizedDataBundle) -> list[str]:
-    mentions: list[str] = []
-
-    for news in bundle.news_docs:
-        haystack = f"{news.title} {news.body}"
-        if any(keyword in haystack for keyword in HOT_THEME_KEYWORDS):
-            mentions.append(news.title)
-
-    return mentions
-
-
 def build_checklist(bundle: NormalizedDataBundle) -> list[ChecklistItem]:
-    business_purpose_matches = _find_matching_disclosures(bundle, terms=("사업목적", "정관"))
-    hot_theme_mentions = _find_hot_theme_mentions(bundle)
+    business_purpose_matches = find_matching_disclosures(bundle, terms=("사업목적", "정관"))
+    hot_theme_mentions = find_hot_theme_mentions(bundle, keywords=HOT_THEME_KEYWORDS)
     structure_change_matches = [
-        disclosure.report_nm
+        disclosure
         for disclosure in bundle.disclosures
         if (disclosure.category or "") in STRUCTURE_CHANGE_CATEGORIES
     ]
@@ -66,7 +49,9 @@ def build_checklist(bundle: NormalizedDataBundle) -> list[ChecklistItem]:
             reason="사업목적/정관 변경 관련 공시가 감지되었습니다."
             if business_purpose_matches
             else "사업목적 변경 관련 징후가 감지되지 않았습니다.",
-            evidence=business_purpose_matches[:3],
+            evidence=[item.report_nm for item in business_purpose_matches[:3]],
+            evidence_refs=disclosure_refs(business_purpose_matches),
+            observed_at=latest_date(item.rcept_dt for item in business_purpose_matches),
         ),
         ChecklistItem(
             id="hot-theme-following",
@@ -84,7 +69,9 @@ def build_checklist(bundle: NormalizedDataBundle) -> list[ChecklistItem]:
                 if not bundle.news_docs
                 else "테마 후행 참여 징후가 약합니다."
             ),
-            evidence=hot_theme_mentions[:3],
+            evidence=[item.title for item in hot_theme_mentions[:3]],
+            evidence_refs=news_refs(hot_theme_mentions),
+            observed_at=latest_date(item.date for item in hot_theme_mentions),
         ),
         ChecklistItem(
             id="capital-structure-change",
@@ -94,7 +81,9 @@ def build_checklist(bundle: NormalizedDataBundle) -> list[ChecklistItem]:
             reason="자본/지배구조 관련 공시가 감지되었습니다."
             if structure_change_matches
             else "구조 변경 징후가 감지되지 않았습니다.",
-            evidence=structure_change_matches[:3],
+            evidence=[item.report_nm for item in structure_change_matches[:3]],
+            evidence_refs=disclosure_refs(structure_change_matches),
+            observed_at=latest_date(item.rcept_dt for item in structure_change_matches),
         ),
         ChecklistItem(
             id="abnormal-price-surge",
@@ -110,10 +99,11 @@ def build_checklist(bundle: NormalizedDataBundle) -> list[ChecklistItem]:
                 if not bundle.price_volume.daily
                 else "가격/거래량 급등이 임계값 미만입니다."
             ),
-            evidence=[
-                f"monthly_return_max={price_signal}",
-                f"volume_spike_ratio={volume_signal}",
-            ],
+            evidence=[f"monthly_return_max={price_signal}", f"volume_spike_ratio={volume_signal}"],
+            evidence_refs=price_refs(
+                bundle, price_signal=price_signal, volume_signal=volume_signal
+            ),
+            observed_at=latest_date(item.date for item in bundle.price_volume.daily),
         ),
         ChecklistItem(
             id="risky-history",
@@ -129,7 +119,9 @@ def build_checklist(bundle: NormalizedDataBundle) -> list[ChecklistItem]:
                 if not bundle.disclosures
                 else "위험 이력 공시가 감지되지 않았습니다."
             ),
-            evidence=structure_change_matches[:3],
+            evidence=[item.report_nm for item in structure_change_matches[:3]],
+            evidence_refs=disclosure_refs(structure_change_matches),
+            observed_at=latest_date(item.rcept_dt for item in structure_change_matches),
         ),
         ChecklistItem(
             id="performance-divergence",
@@ -150,6 +142,8 @@ def build_checklist(bundle: NormalizedDataBundle) -> list[ChecklistItem]:
                 f"operating_income={bundle.financials.operating_income}",
                 f"monthly_return_max={price_signal}",
             ],
+            evidence_refs=financial_refs(bundle, price_signal=price_signal),
+            observed_at=latest_date(item.date for item in bundle.price_volume.daily),
         ),
     ]
 

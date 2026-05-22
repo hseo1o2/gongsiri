@@ -1,0 +1,196 @@
+{
+  "version": "dev-seed-v1",
+  "user": {
+    "id": "dev-admin",
+    "username": "admin"
+  },
+  "watchlist_items": [
+    {
+      "id": "watch-kakao",
+      "user_id": "dev-admin",
+      "corp_code": "00258801",
+      "corp_name": "카카오",
+      "stock_code": "035720",
+      "market": "KOSPI",
+      "added_at": "2026-05-22T00:00:00Z",
+      "source_version": "dev-seed-v1"
+    },
+    {
+      "id": "watch-samsung",
+      "user_id": "dev-admin",
+      "corp_code": "00126380",
+      "corp_name": "삼성전자",
+      "stock_code": "005930",
+      "market": "KOSPI",
+      "added_at": "2026-05-22T00:01:00Z",
+      "source_version": "dev-seed-v1"
+    },
+    {
+      "id": "watch-sample-risk",
+      "user_id": "dev-admin",
+      "corp_code": "00999999",
+      "corp_name": "공시리위험샘플",
+      "stock_code": "099999",
+      "market": "KOSDAQ",
+      "added_at": "2026-05-22T00:02:00Z",
+      "source_version": "dev-seed-v1"
+    }
+  ],
+  "disclosures": [
+    {
+      "rcept_no": "202605220001",
+      "corp_code": "00258801",
+      "report_nm": "주요사항보고서(전환사채권발행결정)",
+      "rcept_dt": "20260522",
+      "category": "cb",
+      "url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=202605220001",
+      "parsed_text": "전환사채 발행 조건과 자금 사용 목적이 공시되었습니다.",
+      "observed_at": "2026-05-22T00:10:00Z",
+      "source_version": "dev-seed-v1"
+    },
+    {
+      "rcept_no": "202605220002",
+      "corp_code": "00258801",
+      "report_nm": "정관변경결정",
+      "rcept_dt": "20260521",
+      "category": "business_purpose",
+      "url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=202605220002",
+      "parsed_text": "신규 사업목적 추가 안건이 포함되었습니다.",
+      "observed_at": "2026-05-22T00:11:00Z",
+      "source_version": "dev-seed-v1"
+    },
+    {
+      "rcept_no": "202605220003",
+      "corp_code": "00126380",
+      "report_nm": "분기보고서",
+      "rcept_dt": "20260520",
+      "category": "financial",
+      "url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=202605220003",
+      "parsed_text": "매출과 영업이익 요약 수치가 포함된 정기보고서입니다.",
+      "observed_at": "2026-05-22T00:12:00Z",
+      "source_version": "dev-seed-v1"
+    },
+    {
+      "rcept_no": "202605220004",
+      "corp_code": "00999999",
+      "report_nm": "최대주주변경",
+      "rcept_dt": "20260519",
+      "category": "control_change",
+      "url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=202605220004",
+      "parsed_text": "최대주주 변경과 신사업 추진 계획이 동시에 언급되었습니다.",
+      "observed_at": "2026-05-22T00:13:00Z",
+      "source_version": "dev-seed-v1"
+    },
+    {
+      "rcept_no": "202605220005",
+      "corp_code": "00999999",
+      "report_nm": "감자결정",
+      "rcept_dt": "20260518",
+      "category": "capital_reduction",
+      "url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=202605220005",
+      "parsed_text": "재무구조 개선 목적의 감자 결정이 공시되었습니다.",
+      "observed_at": "2026-05-22T00:14:00Z",
+      "source_version": "dev-seed-v1"
+    }
+  ],
+  "analysis_reports": [
+    {
+      "id": "report-kakao-caution",
+      "user_id": "dev-admin",
+      "corp_code": "00258801",
+      "corp_name": "카카오",
+      "risk_level": "caution",
+      "risk_score": 3,
+      "checklist": [
+        {"id": "business_purpose", "title": "사업목적 변경", "status": "fail", "score": 1, "reason": "정관변경 공시 존재", "evidence": ["202605220002"]},
+        {"id": "cb_history", "title": "CB·감자 이력", "status": "fail", "score": 1, "reason": "CB 발행 공시 존재", "evidence": ["202605220001"]},
+        {"id": "earnings_gap", "title": "실적괴리", "status": "unknown", "score": 0, "reason": "추가 재무 근거 필요", "evidence": []}
+      ],
+      "short_term_report": "## 단기 관점\n저 공시리가 확인한 공시 기준으로 CB와 사업목적 변경을 함께 점검해야 합니다.",
+      "long_term_report": "## 장기 관점\n신규 사업 진행률과 자금 사용 내역의 후속 공시 확인이 필요합니다.",
+      "disclaimer": "공시 기반 위험 점검이며 투자 판단을 대신하지 않습니다.",
+      "missing_evidence": ["거래량 급등 여부"],
+      "request_context": {"source": "seed", "corpCode": "00258801"},
+      "source_timestamps": {"latestDisclosureDate": "20260522", "latestNewsDate": null, "latestPriceDate": null},
+      "strict_pi_sdk": 1,
+      "generated_at": "2026-05-22T00:20:00Z",
+      "source_version": "dev-seed-v1"
+    },
+    {
+      "id": "report-samsung-normal",
+      "user_id": "dev-admin",
+      "corp_code": "00126380",
+      "corp_name": "삼성전자",
+      "risk_level": "normal",
+      "risk_score": 1,
+      "checklist": [
+        {"id": "financial", "title": "실적괴리", "status": "pass", "score": 0, "reason": "정기보고서 기반 이상 징후 낮음", "evidence": ["202605220003"]}
+      ],
+      "short_term_report": "## 단기 관점\n저 공시리가 확인한 범위에서는 즉시 경고할 공시 기반 위험이 낮습니다.",
+      "long_term_report": "## 장기 관점\n정기보고서 추세를 계속 추적합니다.",
+      "disclaimer": "공시 기반 위험 점검이며 투자 판단을 대신하지 않습니다.",
+      "missing_evidence": [],
+      "request_context": {"source": "seed", "corpCode": "00126380"},
+      "source_timestamps": {"latestDisclosureDate": "20260520", "latestNewsDate": null, "latestPriceDate": null},
+      "strict_pi_sdk": 1,
+      "generated_at": "2026-05-22T00:21:00Z",
+      "source_version": "dev-seed-v1"
+    },
+    {
+      "id": "report-risk-high",
+      "user_id": "dev-admin",
+      "corp_code": "00999999",
+      "corp_name": "공시리위험샘플",
+      "risk_level": "high",
+      "risk_score": 5,
+      "checklist": [
+        {"id": "control_change", "title": "구조변경", "status": "fail", "score": 1, "reason": "최대주주 변경 공시", "evidence": ["202605220004"]},
+        {"id": "capital_reduction", "title": "CB·감자 이력", "status": "fail", "score": 1, "reason": "감자 결정 공시", "evidence": ["202605220005"]}
+      ],
+      "short_term_report": "## 위험 리포트\n저 공시리가 보기에는 구조변경과 감자 공시가 겹쳐 STEP2 진행 전 경고가 필요합니다.",
+      "long_term_report": "",
+      "disclaimer": "공시 기반 위험 점검이며 투자 판단을 대신하지 않습니다.",
+      "missing_evidence": ["최신 주가 데이터", "뉴스 근거"],
+      "request_context": {"source": "seed", "corpCode": "00999999"},
+      "source_timestamps": {"latestDisclosureDate": "20260519", "latestNewsDate": null, "latestPriceDate": null},
+      "strict_pi_sdk": 1,
+      "generated_at": "2026-05-22T00:22:00Z",
+      "source_version": "dev-seed-v1"
+    }
+  ],
+  "qa_history": [
+    {
+      "id": "qa-kakao-1",
+      "user_id": "dev-admin",
+      "corp_code": "00258801",
+      "corp_name": "카카오",
+      "question": "CB 발행이 왜 위험 신호인가요?",
+      "answer": "저 공시리가 확인한 바로는 기존 주주 희석과 자금 사용 목적을 함께 점검해야 합니다.",
+      "evidence": [{"source": "pi_agent_http", "rcept_no": "202605220001"}],
+      "asked_at": "2026-05-22T00:30:00Z",
+      "source_version": "dev-seed-v1"
+    },
+    {
+      "id": "qa-samsung-1",
+      "user_id": "dev-admin",
+      "corp_code": "00126380",
+      "corp_name": "삼성전자",
+      "question": "현재 위험도는 어떤가요?",
+      "answer": "저 공시리가 확인한 최신 seed 기준으로는 정상 범위입니다.",
+      "evidence": [{"source": "pi_agent_http", "rcept_no": "202605220003"}],
+      "asked_at": "2026-05-22T00:31:00Z",
+      "source_version": "dev-seed-v1"
+    },
+    {
+      "id": "qa-risk-1",
+      "user_id": "dev-admin",
+      "corp_code": "00999999",
+      "corp_name": "공시리위험샘플",
+      "question": "왜 STEP2를 중단하나요?",
+      "answer": "저 공시리가 확인한 위험 점수가 높아 위험 리포트만 우선 제공합니다.",
+      "evidence": [{"source": "pi_agent_http", "rcept_no": "202605220004"}],
+      "asked_at": "2026-05-22T00:32:00Z",
+      "source_version": "dev-seed-v1"
+    }
+  ]
+}

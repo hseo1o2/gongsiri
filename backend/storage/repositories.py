@@ -1,0 +1,46 @@
+from __future__ import annotations
+
+from typing import Any, Protocol
+
+Row = dict[str, Any]
+
+
+class UserRepository(Protocol):
+    def get_by_username(self, username: str) -> Row | None: ...
+    def upsert_dev_user(self, user: Row) -> Row: ...
+
+
+class WatchlistRepository(Protocol):
+    def list_for_user(self, user_id: str) -> list[Row]: ...
+    def upsert_item(self, item: Row) -> Row: ...
+    def delete_item(self, *, user_id: str, corp_code: str) -> None: ...
+
+
+class DisclosureRepository(Protocol):
+    def list_recent(self, *, user_id: str, limit: int = 20) -> list[Row]: ...
+    def upsert_many(self, disclosures: list[Row]) -> None: ...
+
+
+class ReportRepository(Protocol):
+    def list_latest_for_user(self, user_id: str) -> list[Row]: ...
+    def get_latest_detail(self, *, user_id: str, corp_code: str) -> Row | None: ...
+    def save_detail(self, report: Row) -> Row: ...
+
+
+class QaHistoryRepository(Protocol):
+    def list_for_user(self, *, user_id: str, corp_code: str | None = None) -> list[Row]: ...
+    def save_answer(self, item: Row) -> Row: ...
+
+
+class AgentRunLogRepository(Protocol):
+    def list_recent(self, *, user_id: str, limit: int = 20) -> list[Row]: ...
+    def save_run(self, run: Row) -> Row: ...
+
+
+class DevRepositoryProvider(Protocol):
+    users: UserRepository
+    watchlist: WatchlistRepository
+    disclosures: DisclosureRepository
+    reports: ReportRepository
+    qa_history: QaHistoryRepository
+    agent_run_logs: AgentRunLogRepository

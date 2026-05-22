@@ -1,0 +1,22 @@
+[project]
+name = "gongsiri-backend"
+version = "0.1.0"
+description = "Backend runtime and deterministic data-plane contracts for gongsiri"
+requires-python = ">=3.12"
+dependencies = [
+  "beautifulsoup4>=4.13.0",
+  "fastapi>=0.115.0",
+  "httpx>=0.28.0",
+  "pydantic>=2.11.0",
+  "pytest>=8.4.0",
+  "python-dotenv>=1.0.0",
+  "requests>=2.32.0",
+  "uvicorn>=0.34.0",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+pythonpath = [".."]
+testpaths = ["tests"]

@@ -1,5 +1,5 @@
 'use client'
-import ReactMarkdown from 'react-markdown'
+import MarkdownContent from '@/components/ui/MarkdownContent'
 
 interface Props {
   title: string
@@ -20,7 +20,7 @@ export default function ReportSection({ title, content, variant = 'normal' }: Pr
         <span style={{ fontSize: 13, fontWeight: 500, letterSpacing: '-0.03em', color: isWarning ? '#A32D2D' : 'var(--color-text-primary)' }}>{title}</span>
       </div>
       <div style={{ padding: '14px 16px', fontSize: 14, lineHeight: 1.7, letterSpacing: '-0.02em', color: isWarning ? '#791F1F' : 'var(--color-text-primary)' }}>
-        <ReactMarkdown>{content}</ReactMarkdown>
+        <MarkdownContent content={content} tone={isWarning ? 'warning' : 'normal'} />
       </div>
     </div>
   )

@@ -12,7 +12,6 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "npm run build && node --test test/**/*.test.mjs",
     "trigger": "npm run build && node dist/cli/runDisclosureTrigger.js",
-    "pipeline": "npm run build && node dist/cli/runPipelineTrigger.js",
     "solar-chat": "npm run build && node dist/cli/runSolarChat.js",
     "serve": "npm run build && node dist/server.js",
     "dev:serve": "npm run build && node dist/server.js"

@@ -1,8 +1,14 @@
 from __future__ import annotations
 
+import os
+
 from fastapi.testclient import TestClient
 
 from backend.main import app
+from backend.storage.connection import get_repository_provider, reset_repository_provider
+from backend.storage.seed import DEV_ADMIN_ID
+
+os.environ["GONGSIRI_AUTH_MODE"] = "dev"
 
 
 def _success_envelope(*, trace_id: str = "route-trace", source: str = "user") -> dict:
@@ -37,7 +43,7 @@ def test_pipeline_trigger_empty_body_uses_route_level_default_evidence(monkeypat
         return _success_envelope(trace_id=trace_id or "generated-trace", source=request["source"])
 
     monkeypatch.setattr(
-        "backend.main.run_pipeline_request",
+        "backend.routes.pipeline_routes.run_pipeline_request",
         fake_run_pipeline_request,
         raising=False,
     )
@@ -60,6 +66,19 @@ def test_pipeline_trigger_empty_body_uses_route_level_default_evidence(monkeypat
     )
 
 
+def test_report_and_qa_routes_require_dev_auth_mode(monkeypatch):
+    monkeypatch.delenv("GONGSIRI_AUTH_MODE", raising=False)
+
+    client = TestClient(app)
+    report_response = client.post("/api/v1/reports", json={"view": "report-list"})
+    qa_response = client.post("/qa", json={"corpCode": "00258801", "question": "질문"})
+
+    assert report_response.status_code == 403
+    assert report_response.json()["error"]["code"] == "dev_auth_disabled"
+    assert qa_response.status_code == 403
+    assert qa_response.json()["error"]["code"] == "dev_auth_disabled"
+
+
 def test_pipeline_trigger_explicit_keyword_wins_over_default(monkeypatch):
     calls: list[dict] = []
 
@@ -68,7 +87,7 @@ def test_pipeline_trigger_explicit_keyword_wins_over_default(monkeypatch):
         return _success_envelope(trace_id=trace_id or "keyword-trace", source=request["source"])
 
     monkeypatch.setattr(
-        "backend.main.run_pipeline_request",
+        "backend.routes.pipeline_routes.run_pipeline_request",
         fake_run_pipeline_request,
         raising=False,
     )
@@ -96,7 +115,7 @@ def test_pipeline_trigger_explicit_corp_code_wins_over_default(monkeypatch):
         return _success_envelope(trace_id=trace_id or "corp-trace", source=request["source"])
 
     monkeypatch.setattr(
-        "backend.main.run_pipeline_request",
+        "backend.routes.pipeline_routes.run_pipeline_request",
         fake_run_pipeline_request,
         raising=False,
     )
@@ -125,12 +144,12 @@ def test_api_v1_reports_detail_returns_view_discriminated_contract(monkeypatch):
         return _success_envelope(trace_id=trace_id or "report-trace", source=request["source"])
 
     monkeypatch.setattr(
-        "backend.report_views.run_pipeline_request",
+        "backend.report_runtime_builders.run_pipeline_request",
         fake_run_pipeline_request,
         raising=False,
     )
     monkeypatch.setattr(
-        "backend.report_views.attach_agent_report",
+        "backend.report_runtime_builders.attach_agent_report",
         lambda response: {
             **response,
             "evidence": response["evidence"] + [{"source": "pi_agent_http"}],
@@ -139,7 +158,8 @@ def test_api_v1_reports_detail_returns_view_discriminated_contract(monkeypatch):
     )
 
     response = TestClient(app).post(
-        "/api/v1/reports", json={"view": "report-detail", "corpCode": "00258801"}
+        "/api/v1/reports",
+        json={"view": "report-detail", "corpCode": "00258801", "forceRefresh": True},
     )
 
     assert response.status_code == 200
@@ -147,22 +167,48 @@ def test_api_v1_reports_detail_returns_view_discriminated_contract(monkeypatch):
     assert payload["view"] == "report-detail"
     assert payload["report"]["corpCode"] == "00258801"
     assert payload["report"]["riskLevel"] == "caution"
-    assert payload["fallback"] == {"used": True, "reason": "cold_start_generated_detail"}
+    assert payload["fallback"] == {"used": False}
     assert "ok" not in payload
     assert "result" not in payload
     assert calls == [{"source": "user", "contractVersion": "v1", "corpCode": "00258801"}]
 
 
-def test_api_v1_reports_list_cold_start_returns_explicit_fallback():
+def test_api_v1_reports_detail_reads_saved_cache_before_generation(monkeypatch):
+    reset_repository_provider()
+
+    def fail_run_pipeline_request(*_args, **_kwargs):
+        raise AssertionError("cached report detail should not regenerate before explicit refresh")
+
+    monkeypatch.setattr(
+        "backend.report_runtime_builders.run_pipeline_request",
+        fail_run_pipeline_request,
+        raising=False,
+    )
+
+    response = TestClient(app).post(
+        "/api/v1/reports",
+        json={"view": "report-detail", "corpCode": "00258801"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["view"] == "report-detail"
+    assert payload["report"]["corpCode"] == "00258801"
+    assert payload["fallback"] == {"used": False}
+    reset_repository_provider()
+
+
+def test_api_v1_reports_list_reads_saved_reports_from_dev_db():
+    reset_repository_provider()
     response = TestClient(app).post("/api/v1/reports", json={"view": "report-list"})
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload == {
-        "view": "report-list",
-        "reports": [],
-        "fallback": {"used": True, "reason": "cold_start_no_cached_reports"},
-    }
+    assert payload["view"] == "report-list"
+    assert payload["fallback"] == {"used": False}
+    assert len(payload["reports"]) == 3
+    assert {item["corpCode"] for item in payload["reports"]} == {"00258801", "00126380", "00999999"}
+    reset_repository_provider()
 
 
 def test_api_v1_reports_manual_check_accepts_twenty_and_rejects_twenty_one():
@@ -199,7 +245,7 @@ def test_api_v1_reports_rejects_malformed_corp_code_without_pipeline(monkeypatch
         raise AssertionError("malformed corpCode must fail before pipeline execution")
 
     monkeypatch.setattr(
-        "backend.report_views.run_pipeline_request",
+        "backend.report_runtime_builders.run_pipeline_request",
         fail_run_pipeline_request,
         raising=False,
     )
@@ -221,7 +267,7 @@ def test_pipeline_trigger_exception_maps_to_typed_failure(monkeypatch):
         raise RuntimeError("route exploded")
 
     monkeypatch.setattr(
-        "backend.main.run_pipeline_request",
+        "backend.routes.pipeline_routes.run_pipeline_request",
         fake_run_pipeline_request,
         raising=False,
     )
@@ -245,17 +291,17 @@ def test_qa_route_accepts_snake_case_corp_code(monkeypatch):
         return {"bundle": True}
 
     monkeypatch.setattr(
-        "backend.main.build_runtime_normalized_bundle",
+        "backend.routes.qa_routes.build_runtime_normalized_bundle",
         fake_build_runtime_normalized_bundle,
         raising=False,
     )
     monkeypatch.setattr(
-        "backend.main.analyze_bundle",
+        "backend.routes.qa_routes.analyze_bundle",
         lambda bundle: {"analysis": True},
         raising=False,
     )
     monkeypatch.setattr(
-        "backend.main.answer_qa_with_agent",
+        "backend.routes.qa_routes.answer_qa_with_agent",
         lambda *, question, bundle, analysis_result, trace_id, contract_version: {
             "answer": f"answer:{question}",
             "source": "pi_agent_http",
@@ -283,17 +329,17 @@ def test_qa_route_accepts_camel_case_corp_code(monkeypatch):
         return {"bundle": True}
 
     monkeypatch.setattr(
-        "backend.main.build_runtime_normalized_bundle",
+        "backend.routes.qa_routes.build_runtime_normalized_bundle",
         fake_build_runtime_normalized_bundle,
         raising=False,
     )
     monkeypatch.setattr(
-        "backend.main.analyze_bundle",
+        "backend.routes.qa_routes.analyze_bundle",
         lambda bundle: {"analysis": True},
         raising=False,
     )
     monkeypatch.setattr(
-        "backend.main.answer_qa_with_agent",
+        "backend.routes.qa_routes.answer_qa_with_agent",
         lambda *, question, bundle, analysis_result, trace_id, contract_version: {
             "answer": "ok",
             "source": "pi_agent_http",
@@ -321,17 +367,17 @@ def test_qa_route_accepts_keyword_when_corp_code_missing(monkeypatch):
         return {"bundle": True}
 
     monkeypatch.setattr(
-        "backend.main.build_runtime_normalized_bundle",
+        "backend.routes.qa_routes.build_runtime_normalized_bundle",
         fake_build_runtime_normalized_bundle,
         raising=False,
     )
     monkeypatch.setattr(
-        "backend.main.analyze_bundle",
+        "backend.routes.qa_routes.analyze_bundle",
         lambda bundle: {"analysis": True},
         raising=False,
     )
     monkeypatch.setattr(
-        "backend.main.answer_qa_with_agent",
+        "backend.routes.qa_routes.answer_qa_with_agent",
         lambda *, question, bundle, analysis_result, trace_id, contract_version: {
             "answer": "ok",
             "source": "pi_agent_http",
@@ -375,7 +421,7 @@ def test_qa_route_rejects_malformed_corp_code_without_agent_call(monkeypatch):
         raise AssertionError("malformed corpCode must fail before bundle construction")
 
     monkeypatch.setattr(
-        "backend.main.build_runtime_normalized_bundle",
+        "backend.routes.qa_routes.build_runtime_normalized_bundle",
         fail_build_runtime_normalized_bundle,
         raising=False,
     )
@@ -395,7 +441,7 @@ def test_api_v1_reports_returns_typed_agent_failure_without_fallback(monkeypatch
     from backend.agent_client import AgentServiceError
 
     monkeypatch.setattr(
-        "backend.report_views.run_pipeline_request",
+        "backend.report_runtime_views.run_pipeline_request",
         lambda request, *, trace_id=None: _success_envelope(
             trace_id=trace_id or "agent-failure-trace",
             source=request["source"],
@@ -406,20 +452,25 @@ def test_api_v1_reports_returns_typed_agent_failure_without_fallback(monkeypatch
     def fake_attach_agent_report(response: dict):
         raise AgentServiceError(
             "agent_unavailable",
-            "저 공시리가 agent service에 연결하지 못했습니다.",
+            "저 공시리가 공시리 응답 서비스에 연결하지 못했습니다.",
             status_code=503,
             evidence=[{"source": "agent_http"}],
         )
 
     monkeypatch.setattr(
-        "backend.report_views.attach_agent_report",
+        "backend.report_runtime_builders.attach_agent_report",
         fake_attach_agent_report,
         raising=False,
     )
 
     response = TestClient(app).post(
         "/api/v1/reports",
-        json={"view": "report-detail", "corpCode": "00258801", "traceId": "agent-failure-trace"},
+        json={
+            "view": "report-detail",
+            "corpCode": "00258801",
+            "traceId": "agent-failure-trace",
+            "forceRefresh": True,
+        },
     )
 
     assert response.status_code == 503
@@ -428,7 +479,7 @@ def test_api_v1_reports_returns_typed_agent_failure_without_fallback(monkeypatch
     assert payload["traceId"] == "agent-failure-trace"
     assert payload["error"] == {
         "code": "agent_unavailable",
-        "message": "저 공시리가 agent service에 연결하지 못했습니다.",
+        "message": "저 공시리가 공시리 응답 서비스에 연결하지 못했습니다.",
     }
     assert payload["evidence"] == [{"source": "agent_http"}]
 
@@ -437,12 +488,12 @@ def test_qa_route_returns_typed_agent_failure_without_solar_fallback(monkeypatch
     from backend.agent_client import AgentServiceError
 
     monkeypatch.setattr(
-        "backend.main.build_runtime_normalized_bundle",
+        "backend.routes.qa_routes.build_runtime_normalized_bundle",
         lambda *, keyword=None, corp_code=None: {"bundle": True},
         raising=False,
     )
     monkeypatch.setattr(
-        "backend.main.analyze_bundle",
+        "backend.routes.qa_routes.analyze_bundle",
         lambda bundle: {"analysis": True},
         raising=False,
     )
@@ -450,13 +501,13 @@ def test_qa_route_returns_typed_agent_failure_without_solar_fallback(monkeypatch
     def fake_answer_qa_with_agent(**kwargs):
         raise AgentServiceError(
             "agent_unavailable",
-            "저 공시리가 agent service에 연결하지 못했습니다.",
+            "저 공시리가 공시리 응답 서비스에 연결하지 못했습니다.",
             status_code=503,
             evidence=[{"source": "agent_http"}],
         )
 
     monkeypatch.setattr(
-        "backend.main.answer_qa_with_agent",
+        "backend.routes.qa_routes.answer_qa_with_agent",
         fake_answer_qa_with_agent,
         raising=False,
     )
@@ -472,7 +523,7 @@ def test_qa_route_returns_typed_agent_failure_without_solar_fallback(monkeypatch
     assert payload["traceId"] == "qa-trace"
     assert payload["error"] == {
         "code": "agent_unavailable",
-        "message": "저 공시리가 agent service에 연결하지 못했습니다.",
+        "message": "저 공시리가 공시리 응답 서비스에 연결하지 못했습니다.",
     }
     assert payload["evidence"] == [{"source": "agent_http"}]
 
@@ -503,6 +554,232 @@ def test_attach_agent_report_rejects_malformed_pi_success_without_report_text():
         raise AssertionError("malformed Pi report success must not fall back to deterministic text")
 
 
+def test_attach_agent_report_merges_checklist_explanations_from_agent():
+    from backend.agent_service import attach_agent_report
+
+    class FakeAgentClient:
+        def generate_report(self, payload: dict) -> dict:
+            return {
+                "ok": True,
+                "mode": "report",
+                "traceId": "explain-trace",
+                "contractVersion": "v1",
+                "observedAt": "2026-05-22T00:00:00Z",
+                "markdown": "## 단기\nshort",
+                "text": "## 단기\nshort",
+                "warnings": [],
+                "data": {
+                    "report": {
+                        "shortTermMarkdown": "## 단기\nshort",
+                        "longTermMarkdown": "",
+                        "disclaimerMarkdown": "공시 기반 위험 점검입니다.",
+                    },
+                    "analysisGuard": {
+                        "riskScore": 2,
+                        "riskLevel": "caution",
+                        "checklistIds": ["business-purpose-change"],
+                    },
+                },
+                "evidence": [{"source": "fake_agent"}],
+            }
+
+        def explain_checklist(self, payload: dict) -> dict:
+            return {
+                "ok": True,
+                "mode": "checklist_explanation",
+                "traceId": "explain-trace",
+                "contractVersion": "v1",
+                "observedAt": "2026-05-22T00:00:00Z",
+                "markdown": "체크리스트 설명",
+                "text": "체크리스트 설명",
+                "warnings": [],
+                "data": {
+                    "checklistExplanation": {
+                        "summaryMarkdown": "체크리스트 설명",
+                        "items": [
+                            {
+                                "id": "business-purpose-change",
+                                "markdown": (
+                                    "저 공시리가 보기에는 사업목적 변경 공시를 "
+                                    "확인해야 합니다."
+                                ),
+                            }
+                        ],
+                    },
+                    "analysisGuard": {
+                        "riskScore": 2,
+                        "riskLevel": "caution",
+                        "checklistIds": ["business-purpose-change"],
+                    },
+                },
+                "evidence": [{"source": "fake_agent"}],
+            }
+
+    response = attach_agent_report(
+        {
+            **_success_envelope(trace_id="explain-trace"),
+            "result": {
+                **_success_envelope(trace_id="explain-trace")["result"],
+                "analysis_result": {
+                    **_success_envelope(trace_id="explain-trace")["result"]["analysis_result"],
+                    "checklist": [
+                        {
+                            "id": "business-purpose-change",
+                            "reason": "원래 이유",
+                            "title": "사업목적 전환 이력",
+                            "status": "fail",
+                            "score": 1,
+                            "evidence": [],
+                        }
+                    ],
+                },
+            },
+        },
+        client=FakeAgentClient(),
+    )
+
+    assert response["result"]["analysis_result"]["checklist"][0]["solar_explanation"].startswith(
+        "저 공시리가"
+    )
+
+
+def test_attach_agent_report_accepts_structured_mode_contract_and_preserves_guard():
+    from backend.agent_service import attach_agent_report
+
+    class FakeAgentClient:
+        def generate_report(self, payload: dict) -> dict:
+            return {
+                "ok": True,
+                "mode": "report",
+                "traceId": "structured-report-trace",
+                "contractVersion": "v1",
+                "observedAt": "2026-05-22T00:00:00Z",
+                "markdown": "## 단기\nshort\n\n## 장기\nlong",
+                "text": "## 단기\nshort\n\n## 장기\nlong",
+                "warnings": [],
+                "data": {
+                    "report": {
+                        "shortTermMarkdown": "## 단기\nshort",
+                        "longTermMarkdown": "## 장기\nlong",
+                        "disclaimerMarkdown": "공시 기반 위험 점검입니다.",
+                    },
+                    "analysisGuard": {
+                        "riskScore": 2,
+                        "riskLevel": "caution",
+                        "checklistIds": [],
+                    },
+                },
+                "evidence": [{"source": "fake_agent"}],
+            }
+
+    response = attach_agent_report(
+        _success_envelope(trace_id="structured-report-trace"), client=FakeAgentClient()
+    )
+
+    assert (
+        response["result"]["analysis_result"]["short_term_report"]
+        == "## 단기\nshort"
+    )
+    assert (
+        response["result"]["analysis_result"]["long_term_report"]
+        == "## 장기\nlong"
+    )
+    assert response["result"]["analysis_result"]["disclaimer"] == "공시 기반 위험 점검입니다."
+
+
+def test_answer_qa_with_agent_accepts_structured_mode_contract():
+    from backend.agent_service import answer_qa_with_agent
+
+    class FakeAgentClient:
+        def answer_qa(self, payload: dict) -> dict:
+            return {
+                "ok": True,
+                "mode": "qa",
+                "traceId": "structured-qa-trace",
+                "contractVersion": "v1",
+                "observedAt": "2026-05-22T00:00:00Z",
+                "markdown": "저 공시리가 보기에는 CB 공시를 함께 확인해야 합니다.",
+                "text": "저 공시리가 보기에는 CB 공시를 함께 확인해야 합니다.",
+                "warnings": [],
+                "data": {
+                    "qa": {
+                        "answerMarkdown": "저 공시리가 보기에는 CB 공시를 함께 확인해야 합니다."
+                    },
+                    "analysisGuard": {
+                        "riskScore": 2,
+                        "riskLevel": "caution",
+                        "checklistIds": [],
+                    },
+                },
+                "evidence": [{"source": "fake_agent"}],
+            }
+
+    result = answer_qa_with_agent(
+        question="CB 공시 영향은?",
+        bundle={"company": {"corp_name": "카카오"}},
+        analysis_result={"risk_score": 2, "risk_level": "caution", "checklist": []},
+        trace_id="structured-qa-trace",
+        contract_version="v1",
+        client=FakeAgentClient(),
+    )
+
+    assert "저 공시리가" in result["answer"]
+    assert result["source"] == "pi_agent_http"
+
+
+def test_explain_checklist_with_agent_returns_structured_items():
+    from backend.agent_service import explain_checklist_with_agent
+
+    class FakeAgentClient:
+        def explain_checklist(self, payload: dict) -> dict:
+            return {
+                "ok": True,
+                "mode": "checklist_explanation",
+                "traceId": "checklist-trace",
+                "contractVersion": "v1",
+                "observedAt": "2026-05-22T00:00:00Z",
+                "markdown": "체크리스트 설명 요약",
+                "text": "체크리스트 설명 요약",
+                "warnings": [],
+                "data": {
+                    "checklistExplanation": {
+                        "summaryMarkdown": "체크리스트 설명 요약",
+                        "items": [
+                            {
+                                "id": "business-purpose-change",
+                                "markdown": (
+                                    "저 공시리가 보기에는 사업목적 변경 공시를 "
+                                    "확인해야 합니다."
+                                ),
+                            }
+                        ],
+                    },
+                    "analysisGuard": {
+                        "riskScore": 2,
+                        "riskLevel": "caution",
+                        "checklistIds": ["business-purpose-change"],
+                    },
+                },
+                "evidence": [{"source": "fake_agent"}],
+            }
+
+    result = explain_checklist_with_agent(
+        bundle={"company": {"corp_name": "카카오"}},
+        analysis_result={
+            "risk_score": 2,
+            "risk_level": "caution",
+            "checklist": [{"id": "business-purpose-change"}],
+        },
+        trace_id="checklist-trace",
+        contract_version="v1",
+        checklist_ids=["business-purpose-change"],
+        client=FakeAgentClient(),
+    )
+
+    assert result["items"][0]["id"] == "business-purpose-change"
+    assert "저 공시리가" in result["items"][0]["markdown"]
+
+
 def test_api_v1_reports_detail_pipeline_failure_matches_typed_error_contract(monkeypatch):
     def fake_run_pipeline_request(request: dict, *, trace_id: str | None = None):
         return {
@@ -516,7 +793,7 @@ def test_api_v1_reports_detail_pipeline_failure_matches_typed_error_contract(mon
         }
 
     monkeypatch.setattr(
-        "backend.report_views.run_pipeline_request",
+        "backend.report_runtime_builders.run_pipeline_request",
         fake_run_pipeline_request,
         raising=False,
     )
@@ -536,7 +813,7 @@ def test_api_v1_reports_detail_pipeline_failure_matches_typed_error_contract(mon
 def test_api_v1_reports_list_does_not_fabricate_summaries_without_persistence():
     response = TestClient(app).post(
         "/api/v1/reports",
-        json={"view": "report-list", "corpCodes": ["00258801", "00126380"]},
+        json={"view": "report-list", "corpCodes": ["12345678"]},
     )
 
     assert response.status_code == 200
@@ -545,3 +822,96 @@ def test_api_v1_reports_list_does_not_fabricate_summaries_without_persistence():
         "reports": [],
         "fallback": {"used": True, "reason": "cold_start_no_cached_reports"},
     }
+
+
+def test_qa_route_persists_saved_answer_and_history_route_filters_by_corp_code(monkeypatch):
+    monkeypatch.setenv("GONGSIRI_AUTH_MODE", "dev")
+    reset_repository_provider()
+
+    monkeypatch.setattr(
+        "backend.routes.qa_routes.build_runtime_normalized_bundle",
+        lambda *, keyword=None, corp_code=None: {
+            "company": {"corp_name": "카카오", "corp_code": corp_code or "00258801"}
+        },
+        raising=False,
+    )
+    monkeypatch.setattr(
+        "backend.routes.qa_routes.analyze_bundle",
+        lambda bundle: {"analysis": True},
+        raising=False,
+    )
+    monkeypatch.setattr(
+        "backend.routes.qa_routes.answer_qa_with_agent",
+        lambda **kwargs: {
+            "answer": "저 공시리가 저장 가능한 답변을 만들었습니다.",
+            "source": "pi_agent_http",
+            "evidence": [{"source": "pi_agent_http"}],
+        },
+        raising=False,
+    )
+
+    client = TestClient(app)
+    created = client.post("/qa", json={"corpCode": "00258801", "question": "새 질문"})
+    history = client.get("/api/v1/qa-history?corp_code=00258801")
+
+    assert created.status_code == 200
+    assert history.status_code == 200
+    body = history.json()
+    assert body["ok"] is True
+    assert body["items"][0]["corpCode"] == "00258801"
+    assert body["items"][0]["corpName"] == "카카오"
+    assert body["items"][0]["question"] == "새 질문"
+    assert "저 공시리가" in body["items"][0]["answer"]
+    reset_repository_provider()
+
+
+def test_qa_route_agent_failure_does_not_store_success_row(monkeypatch):
+    from backend.agent_client import AgentServiceError
+
+    monkeypatch.setenv("GONGSIRI_AUTH_MODE", "dev")
+    reset_repository_provider()
+    before = len(
+        get_repository_provider().qa_history.list_for_user(
+            user_id=DEV_ADMIN_ID, corp_code="00258801"
+        )
+    )
+
+    monkeypatch.setattr(
+        "backend.routes.qa_routes.build_runtime_normalized_bundle",
+        lambda *, keyword=None, corp_code=None: {
+            "company": {"corp_name": "카카오", "corp_code": corp_code or "00258801"}
+        },
+        raising=False,
+    )
+    monkeypatch.setattr(
+        "backend.routes.qa_routes.analyze_bundle",
+        lambda bundle: {"analysis": True},
+        raising=False,
+    )
+
+    def fake_answer_qa_with_agent(**kwargs):
+        raise AgentServiceError(
+            "agent_unavailable",
+            "저 공시리가 공시리 응답 서비스에 연결하지 못했습니다.",
+            status_code=503,
+            evidence=[{"source": "agent_http"}],
+        )
+
+    monkeypatch.setattr(
+        "backend.routes.qa_routes.answer_qa_with_agent",
+        fake_answer_qa_with_agent,
+        raising=False,
+    )
+
+    response = TestClient(app).post(
+        "/qa", json={"corpCode": "00258801", "question": "저장되면 안 됨"}
+    )
+    after = len(
+        get_repository_provider().qa_history.list_for_user(
+            user_id=DEV_ADMIN_ID, corp_code="00258801"
+        )
+    )
+
+    assert response.status_code == 503
+    assert after == before
+    reset_repository_provider()

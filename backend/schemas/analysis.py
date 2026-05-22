@@ -10,6 +10,12 @@ ChecklistStatus = Literal["pass", "fail", "unknown"]
 RiskLevel = Literal["normal", "caution", "high"]
 
 
+class ChecklistEvidenceRef(BaseModel):
+    label: str
+    source: str
+    observed_at: str | None = None
+
+
 class ChecklistItem(BaseModel):
     id: str
     title: str
@@ -17,6 +23,9 @@ class ChecklistItem(BaseModel):
     score: int
     reason: str
     evidence: list[str] = Field(default_factory=list)
+    evidence_refs: list[ChecklistEvidenceRef] = Field(default_factory=list)
+    source: str = "deterministic_backend"
+    observed_at: str | None = None
     solar_explanation: str = ""
 
 

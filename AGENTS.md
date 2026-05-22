@@ -80,7 +80,7 @@ cd agent && node --watch dist/server.js
 
 # backend: 반드시 repo root에서 실행 (backend.main import 경로 유지)
 set -a; source .env; set +a
-uv run uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
+uv run --project backend uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
 # health: curl http://127.0.0.1:8000/
 
 # frontend
@@ -134,13 +134,13 @@ cd agent && npm run typecheck
 cd agent && node --watch dist/server.js
 
 # Backend dev (repo root)
-uv run uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
+uv run --project backend uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
 
 # Frontend dev
 cd frontend && npm run dev -- --hostname 127.0.0.1 --port 3000
 
 # 테스트
-python3 -m unittest discover -s tests -v
+cd backend && uv run python -m pytest tests -q
 cd agent && npm test
 cd frontend && pnpm test
 

@@ -25,12 +25,12 @@ function toWatchlistItem(company: CompanyInfo): WatchlistItem | null {
 }
 
 export default function AddStockModal({ onClose }: Props) {
-  const { dispatch, state } = useDemoSession()
+  const { addWatchlistItem, dispatch, state } = useDemoSession()
   const [selected, setSelected] = useState<CompanyInfo | null>(null)
   const [done, setDone] = useState(false)
   const [error, setError] = useState('')
 
-  function handleAdd() {
+  async function handleAdd() {
     if (!selected) return
     setDone(false)
     setError('')
@@ -48,9 +48,15 @@ export default function AddStockModal({ onClose }: Props) {
       return
     }
 
-    dispatch({ type: 'watchlist/add', item })
-    setDone(true)
-    setTimeout(onClose, 900)
+    try {
+      await addWatchlistItem(item)
+      setDone(true)
+      setTimeout(onClose, 900)
+    } catch (cause) {
+      setError(
+        cause instanceof Error ? cause.message : '저 공시리가 워치리스트를 저장하지 못했습니다.',
+      )
+    }
   }
 
   return (
@@ -62,6 +68,9 @@ export default function AddStockModal({ onClose }: Props) {
         </div>
 
         <SearchInput onSelect={company => { setSelected(company); setDone(false); setError('') }} />
+        <p style={{ marginTop: 10, fontSize: 11, color: 'var(--color-text-tertiary)', letterSpacing: '-0.02em' }}>
+          검색 결과는 dev seed 카탈로그 기준이며, 선택 후 저장은 backend BFF를 거쳐 dev DB에 반영됩니다.
+        </p>
 
         {selected && (
           <div style={{ marginTop: 12, padding: '12px 14px', background: 'var(--color-bg-secondary)', borderRadius: 'var(--radius-md)', border: '0.5px solid var(--color-border-tertiary)' }}>
@@ -86,7 +95,7 @@ export default function AddStockModal({ onClose }: Props) {
 
         <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'flex-end' }}>
           <Button variant="secondary" onClick={onClose}>취소</Button>
-          <Button onClick={handleAdd} disabled={!selected}>
+          <Button onClick={() => void handleAdd()} disabled={!selected}>
             종목 추가
           </Button>
         </div>

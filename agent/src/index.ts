@@ -2,7 +2,6 @@ import { PiDisclosureAgent } from "./agents/PiDisclosureAgent.js";
 import type { PromptRequest } from "./contracts/request.js";
 import type { ToolDefinition } from "./contracts/tool.js";
 import { solarChatTool } from "./tools/chatWithSolar.js";
-import { runAnalysisPipelineTool } from "./tools/runAnalysisPipeline.js";
 import { normalizeManualPrompt } from "./prompt/manualPrompt.js";
 import { createDisclosureScheduler } from "./scheduler/disclosureScheduler.js";
 import { createSessionContext } from "./session/session.js";
@@ -63,7 +62,6 @@ export const runManualPrompt = async (
 };
 
 export { createDisclosureScheduler, createDisclosureTriggerRequest, runTriggeredDisclosureCheck };
-export { runAnalysisPipelineTool };
 export { solarChatTool };
 export type { AgentHealthResponse, AgentQaRequest, AgentReportRequest, AgentServiceResponse } from "./contracts/agentService.js";
 export { createAgentHttpServer, startAgentHttpServer } from "./server.js";

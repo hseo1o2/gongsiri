@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { IconChevronDown, IconChevronUp } from '@tabler/icons-react'
+import MarkdownContent from '@/components/ui/MarkdownContent'
 import type { ChecklistItem } from '@/lib/types'
 
 const ICON_STYLE = {
@@ -32,9 +33,9 @@ function ChecklistRow({ item }: { item: ChecklistItem }) {
       {open && (
         <div style={{ padding: '0 16px 12px 46px', display: 'flex', flexDirection: 'column', gap: 6 }}>
           {item.solar_explanation && (
-            <p style={{ fontSize: 12, lineHeight: 1.6, color: 'var(--color-text-secondary)', letterSpacing: '-0.02em' }}>
-              {item.solar_explanation}
-            </p>
+            <div style={{ fontSize: 12, lineHeight: 1.6, letterSpacing: '-0.02em' }}>
+              <MarkdownContent content={item.solar_explanation} tone="muted" />
+            </div>
           )}
           {item.evidence.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>

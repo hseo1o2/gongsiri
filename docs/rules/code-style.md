@@ -89,6 +89,17 @@
 - 파일명: Python `snake_case.py`, TS 컴포넌트 `PascalCase.tsx`, TS 일반 모듈 `camelCase.ts`.
 - 약어보다 의미. `corpCd` 보다 `corpCode`, `tinfo` 보다 `tradeInfo`.
 
+### User-facing naming / tone
+
+- **사용자에게 보이는 문구에서 에이전트의 이름은 항상 `공시리`다.**
+  - ✅ `공시리가 답변을 준비하고 있습니다.`
+  - ✅ `저 공시리가 확인한 바로는...`
+  - ❌ `Pi agent가 분석 중...`
+  - ❌ `Pi SDK 응답을 기다리는 중입니다.`
+- frontend 화면 문구, toast, empty/error/loading state, 버튼 보조 문구, BFF가 그대로 전달하는 사용자용 에러 메시지에는 **내부 구현명**(`Pi agent`, `Pi SDK`, `agent service`)을 노출하지 않는다.
+- 내부 구현명은 **개발자용 코드/로그/문서**에서만 사용한다. 예: `agent/src/`, `GONGSIRI_AGENT_URL`, 아키텍처 문서의 backend→agent 설명.
+- 1인칭 주체가 필요할 때는 `저 공시리가...` / `공시리가...`를 기본으로 한다.
+
 ---
 
 ## 관련 문서

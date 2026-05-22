@@ -1,10 +1,10 @@
 'use client'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
   IconLayoutDashboard, IconEye, IconBell,
   IconFileAnalytics, IconChartPie, IconMessage2,
-  IconSettings, IconChevronRight,
+  IconSettings, IconLogout,
 } from '@tabler/icons-react'
 
 const NAV = [
@@ -34,6 +34,13 @@ const NAV = [
 
 export default function Sidebar() {
   const pathname = usePathname()
+  const router = useRouter()
+
+  async function handleLogout() {
+    await fetch('/api/auth/logout', { method: 'POST' })
+    router.replace('/login')
+    router.refresh()
+  }
 
   return (
     <aside style={{ background: 'var(--color-navy)', display: 'flex', flexDirection: 'column', width: 200, minHeight: '100vh' }}>
@@ -85,10 +92,20 @@ export default function Sidebar() {
       <div style={{ padding: '12px 10px', borderTop: '0.5px solid #1A2235' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px' }}>
           <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#1A2235', border: '0.5px solid #2A3A52', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 500, color: '#B5D4F4' }}>
-            장
+            공
           </div>
-          <span style={{ fontSize: 12, color: '#888780', letterSpacing: '-0.02em' }}>사용자</span>
-          <IconChevronRight size={13} color="#444441" style={{ marginLeft: 'auto' }} />
+          <div style={{ minWidth: 0 }}>
+            <p style={{ fontSize: 12, color: '#E8F4FF', letterSpacing: '-0.02em' }}>공시리 관리자</p>
+            <p style={{ fontSize: 10, color: '#5F5E5A', letterSpacing: '-0.01em' }}>dev session</p>
+          </div>
+          <button
+            type="button"
+            onClick={handleLogout}
+            aria-label="로그아웃"
+            style={{ marginLeft: 'auto', background: 'transparent', border: 0, color: '#5F5E5A', cursor: 'pointer', display: 'flex', padding: 4 }}
+          >
+            <IconLogout size={14} />
+          </button>
         </div>
       </div>
     </aside>

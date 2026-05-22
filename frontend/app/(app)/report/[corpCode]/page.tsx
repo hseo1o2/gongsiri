@@ -7,14 +7,18 @@ import ReanalyzeButton from './_components/ReanalyzeButton'
 
 export const dynamic = 'force-dynamic'
 
-export default async function ReportDetailPage({ params }: { params: Promise<{ corpCode: string }> }) {
+export default async function ReportDetailPage({
+  params,
+}: {
+  params: Promise<{ corpCode: string }>
+}) {
   const { corpCode } = await params
 
   const detail = await fetchReportDetailViewModel(corpCode)
     .then(value => ({ value, error: '' }))
     .catch(error => ({
       value: null,
-      error: error instanceof Error ? error.message : '리포트 상세를 불러올 수 없습니다.',
+      error: error instanceof Error ? error.message : '저 공시리가 리포트 상세를 불러오지 못했습니다.',
     }))
 
   if (!detail.value) {
@@ -29,7 +33,7 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ c
             <p style={{ fontSize: 12, color: '#A32D2D', marginTop: 4, letterSpacing: '-0.02em' }}>{detail.error}</p>
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <ReanalyzeButton />
+            <ReanalyzeButton corpCode={corpCode} />
           </div>
         </div>
       </div>
@@ -67,7 +71,7 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ c
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
             <RiskBadge level={result.risk_level} />
-            <ReanalyzeButton />
+            <ReanalyzeButton corpCode={resolvedCorpCode} />
           </div>
           <div style={{ textAlign: 'right' }}>
             <p className="font-mono" style={{ fontSize: 28, fontWeight: 500, color: scoreColor, letterSpacing: '-0.02em' }}>

@@ -1,8 +1,7 @@
-import type { ReportSummaryContract } from '@/lib/api/types'
 import type { WatchlistItem } from '@/lib/types'
 import type { DemoSessionState } from './types'
 
-const SEEDED_WATCHLIST: WatchlistItem[] = [
+const SEEDED_COMPANIES: WatchlistItem[] = [
   {
     corp_code: '00258801',
     corp_name: '카카오',
@@ -25,10 +24,18 @@ const SEEDED_WATCHLIST: WatchlistItem[] = [
     risk_score: 0,
     last_analyzed: '데모 시드',
   },
+  {
+    corp_code: '00999999',
+    corp_name: '공시리위험샘플',
+    stock_code: '099999',
+    market: 'KOSDAQ',
+    risk_level: 'high',
+    risk_score: 5,
+    last_analyzed: '데모 시드',
+  },
 ]
-
-const DEMO_COMPANY_CATALOG: WatchlistItem[] = [
-  ...SEEDED_WATCHLIST,
+export const DEMO_COMPANY_CATALOG: WatchlistItem[] = [
+  ...SEEDED_COMPANIES,
   {
     corp_code: '00247540',
     corp_name: '에코프로비엠',
@@ -53,23 +60,6 @@ const DEMO_COMPANY_CATALOG: WatchlistItem[] = [
   },
 ]
 
-const SEEDED_REPORTS: ReportSummaryContract[] = SEEDED_WATCHLIST.map(item => ({
-  corpCode: item.corp_code,
-  corpName: item.corp_name,
-  analyzedAt: item.last_analyzed ?? '데모 시드',
-  riskLevel: item.risk_level ?? 'normal',
-  riskScore: item.risk_score ?? 0,
-}))
-
-function byCorpCode<T extends { corpCode?: string; corp_code?: string }>(items: T[]): Record<string, T> {
-  return Object.fromEntries(
-    items.flatMap(item => {
-      const corpCode = item.corpCode ?? item.corp_code
-      return corpCode ? [[corpCode, item]] : []
-    }),
-  )
-}
-
 export function createInitialDemoSessionState(): DemoSessionState {
   return {
     auth: {
@@ -79,11 +69,13 @@ export function createInitialDemoSessionState(): DemoSessionState {
       onboardingComplete: true,
     },
     companyCatalog: DEMO_COMPANY_CATALOG,
-    watchlistByCorpCode: byCorpCode(SEEDED_WATCHLIST),
-    watchlistOrder: SEEDED_WATCHLIST.map(item => item.corp_code),
+    watchlistByCorpCode: {},
+    watchlistOrder: [],
     addStatus: { state: 'idle', message: '' },
     lastManualCheck: null,
-    reportSummariesByCorpCode: byCorpCode(SEEDED_REPORTS),
+    reportSummariesByCorpCode: {},
     reportDetailsByCorpCode: {},
+    recentDisclosures: [],
+    loadStatus: { state: 'loading', message: '' },
   }
 }

@@ -76,12 +76,9 @@ Responsibilities:
 - `backend/analyzer/cli/run_pipeline.py` — canonical Python pipeline entrypoint
 
 ### New runtime components
-- `agent/src/contracts/pipeline.ts` — pipeline request/result contracts
-- `agent/src/tools/runAnalysisPipeline.ts` — TS wrapper for the Python pipeline command
-- `agent/src/cli/runPipelineTrigger.ts` — one-off pipeline trigger entrypoint
+- `agent/src/contracts/pipeline.ts` — historical pipeline contract types retained only for compatibility review
 
 ### G003 rules
-- runtime pipeline requests must support both `keyword` and `corpCode`
 - pipeline normalization must not persist new symbols to `assets/stock_master.json`
 - pipeline normalization must not delete local report files
 - analyzer core should stay deterministic first, with any narrative/LLM boundary clearly isolated
@@ -155,9 +152,8 @@ Rules: `frontend → backend` allowed; `backend → agent` allowed;
 
 ### What changes from the PR1 subprocess architecture
 
-- `agent/src/tools/runAnalysisPipeline.ts` → `POST /pipeline/trigger` (the cycle
-  source) is **removed/inverted**: the backend service now calls the agent, the agent
-  no longer calls the backend.
+- any former agent-owned pipeline trigger/tool surface is removed/inverted: the backend
+  service now calls the agent, and the agent no longer calls the backend.
 - A new agent HTTP server entrypoint is added under `agent/` (Node `http`-based).
 - A QA bridge path is added (addresses `docs/10` deferred item #2).
 - The `agent/` skeleton is re-homed onto the Pi SDK instead of hand-rolled contracts.
@@ -179,3 +175,8 @@ Rules: `frontend → backend` allowed; `backend → agent` allowed;
   Pi SDK service to answer. Failure returns a typed error; it does not call legacy
   `backend/analyzer/qa.py` as fallback.
 - All user-facing report/QA/error copy should speak as first-person `공시리`.
+
+
+## G010 Narrative Migration Note
+
+As of G010, backend analyzer ownership is narrowed to deterministic scoring, evidence mapping, and preparation DTOs. Report narrative, Q&A prose, and checklist explanation prose belong to the 공시리 agent modes (`report`, `qa`, `checklist_explanation`) over normalized backend facts. Legacy `backend/analyzer/solar_step*.py` prompt modules are retained only as historical/compatibility artifacts until later cleanup removes them entirely.

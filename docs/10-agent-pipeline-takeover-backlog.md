@@ -14,7 +14,7 @@ Source evidence:
 - **No frontend UI edits in the takeover slice.** Do not change `frontend/app/**` pages/layouts except `frontend/app/api/**` route handlers when an API-proxy-only compatibility change is explicitly needed. Do not change `frontend/components/**` or frontend CSS for this work.
 - **Respect upstream lock policy.** Do not add a new `pnpm-lock.yaml`, workspace file, or package-manager lock that upstream does not already carry. The frontend currently has `frontend/package-lock.json`; preserve the existing package-manager boundary.
 - **Preserve backend Solar fallback.** Do not delete `backend/analyzer/solar_client.py`, `backend/analyzer/solar_step1.py`, `backend/analyzer/solar_step2.py`, `backend/analyzer/qa.py`, or backend prompt assets until the agent-owned Solar seam is proven and a later migration explicitly approves removal.
-- **Use existing tools first.** Prefer existing `fetch_disclosures`, `run_analysis_pipeline`, and `chat_with_solar` seams over introducing new tool names.
+- **Use existing tools first.** Prefer existing `fetch_disclosures` and `chat_with_solar` seams over introducing new tool names. Legacy agent-side pipeline trigger surfaces are removed.
 - **Keep tests local to the area when feasible.** New agent tests belong under `agent/test/`; new backend tests should prefer `backend/tests/`; broad root-test relocation remains deferred.
 
 ## Deferred Issue Backlog

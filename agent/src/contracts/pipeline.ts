@@ -16,6 +16,14 @@ export type AnalysisChecklistItem = {
   score: number;
   reason: string;
   evidence: string[];
+  evidence_refs?: Array<{
+    label: string;
+    source: string;
+    observed_at?: string | null;
+  }>;
+  source?: string;
+  observed_at?: string | null;
+  solar_explanation?: string;
 };
 
 export type AnalysisResultPayload = {

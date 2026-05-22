@@ -50,17 +50,24 @@ export async function fetchReportList(corpCodes?: string[]): Promise<ReportListR
     ...(corpCodes ? { corpCodes } : {}),
   }, { cache: 'no-store' })
 
+  if (isFailureEnvelope(payload)) {
+    throw new Error(payload.error?.message ?? '저 공시리가 리포트 목록을 불러오지 못했습니다.')
+  }
   if (!isReportListResponse(payload)) {
-    throw new Error('지원되지 않는 리포트 목록 응답 형식입니다.')
+    throw new Error('저 공시리가 리포트 목록 응답 형식을 확인하지 못했습니다.')
   }
 
   return payload
 }
 
-export async function fetchReportDetail(corpCode: string): Promise<ReportDetailResponse> {
+export async function fetchReportDetail(
+  corpCode: string,
+  forceRefresh = false,
+): Promise<ReportDetailResponse> {
   const payload = await postReports({
     view: 'report-detail',
     corpCode,
+    ...(forceRefresh ? { forceRefresh: true } : {}),
   }, { cache: 'no-store' })
 
   if (isTypedReportDetailResponse(payload)) {
@@ -68,10 +75,10 @@ export async function fetchReportDetail(corpCode: string): Promise<ReportDetailR
   }
 
   if (isFailureEnvelope(payload)) {
-    throw new Error(payload.error?.message ?? '리포트 상세를 불러올 수 없습니다.')
+    throw new Error(payload.error?.message ?? '저 공시리가 리포트 상세를 불러오지 못했습니다.')
   }
 
-  throw new Error('지원되지 않는 리포트 상세 응답 형식입니다.')
+  throw new Error('저 공시리가 리포트 상세 응답 형식을 확인하지 못했습니다.')
 }
 
 export async function postManualCheck(corpCodes: string[]): Promise<ManualCheckResponse> {
@@ -120,15 +127,25 @@ function normalizeChecklist(items: ChecklistItemContract[] | ChecklistItem[]): C
     score: item.score,
     reason: item.reason,
     evidence: item.evidence,
-    solar_explanation: 'solar_explanation' in item ? (item.solar_explanation ?? item.reason) : item.reason,
+    evidenceRefs: item.evidenceRefs,
+    source: item.source,
+    observedAt: item.observedAt,
+    solar_explanation:
+      'solar_explanation' in item
+        ? (item.solar_explanation ?? item.reason)
+        : (item.explanationMarkdown ?? item.reason),
   }))
 }
 
-export async function fetchReportDetailViewModel(corpCode: string): Promise<ReportDetailViewModel> {
+export async function fetchReportDetailViewModel(
+  corpCode: string,
+  forceRefresh = false,
+): Promise<ReportDetailViewModel> {
   const payload = await postReports(
     {
       view: 'report-detail',
       corpCode,
+      ...(forceRefresh ? { forceRefresh: true } : {}),
     },
     { cache: 'no-store' },
   ) as unknown
@@ -152,10 +169,10 @@ export async function fetchReportDetailViewModel(corpCode: string): Promise<Repo
   }
 
   if (isFailureEnvelope(payload)) {
-    throw new Error(payload.error?.message ?? '리포트 상세를 불러올 수 없습니다.')
+    throw new Error(payload.error?.message ?? '저 공시리가 리포트 상세를 불러오지 못했습니다.')
   }
 
-  throw new Error('지원되지 않는 리포트 상세 응답 형식입니다.')
+  throw new Error('저 공시리가 리포트 상세 응답 형식을 확인하지 못했습니다.')
 }
 
 export { MANUAL_CHECK_BATCH_MAX }

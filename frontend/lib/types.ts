@@ -8,6 +8,13 @@ export interface ChecklistItem {
   score: number
   reason: string
   evidence: string[]
+  evidenceRefs?: Array<{
+    label: string
+    source: string
+    observedAt?: string | null
+  }>
+  source?: string
+  observedAt?: string | null
   solar_explanation: string
 }
 

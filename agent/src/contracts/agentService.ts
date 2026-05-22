@@ -1,39 +1,52 @@
+import type { AnalysisResultPayload } from "./pipeline.js";
 import type { ContractVersion } from "./request.js";
 
-export type AgentServiceMode = "report" | "qa";
+export type AgentServiceMode = "report" | "qa" | "checklist_explanation";
 export type AgentServiceEvidence = Record<string, unknown>;
+export type AgentChecklistExplanationItem = {
+  id: string;
+  title?: string;
+  markdown: string;
+};
+export type AgentAnalysisGuard = {
+  riskScore: number;
+  riskLevel: AnalysisResultPayload["risk_level"];
+  checklistIds: string[];
+};
 
-export type AgentReportRequest = {
+type AgentRequestBase = {
+  traceId?: string;
+  contractVersion?: ContractVersion;
+  source?: "user" | "system" | "cron";
+  corpCode?: string;
+  corpName?: string;
+  context?: unknown;
+  bundle?: Record<string, unknown>;
+  normalizedDataBundle?: Record<string, unknown>;
+  analysisResult?: AnalysisResultPayload;
+  preparation?: Record<string, unknown>;
+  evidence?: AgentServiceEvidence[];
+};
+
+export type AgentReportRequest = AgentRequestBase & {
   mode?: "report";
-  traceId?: string;
-  contractVersion?: ContractVersion;
-  corpCode?: string;
-  corpName?: string;
   prompt?: string;
-  context?: unknown;
-  bundle?: Record<string, unknown>;
-  normalizedDataBundle?: Record<string, unknown>;
-  analysisResult?: Record<string, unknown>;
-  preparation?: Record<string, unknown>;
-  evidence?: AgentServiceEvidence[];
 };
 
-export type AgentQaRequest = {
+export type AgentQaRequest = AgentRequestBase & {
   mode?: "qa";
-  traceId?: string;
-  contractVersion?: ContractVersion;
-  corpCode?: string;
-  corpName?: string;
   question: string;
-  context?: unknown;
-  bundle?: Record<string, unknown>;
-  normalizedDataBundle?: Record<string, unknown>;
-  analysisResult?: Record<string, unknown>;
-  preparation?: Record<string, unknown>;
-  evidence?: AgentServiceEvidence[];
 };
 
-export type AgentServiceRequest = AgentReportRequest | AgentQaRequest;
+export type AgentChecklistExplanationRequest = AgentRequestBase & {
+  mode?: "checklist_explanation";
+  checklistIds?: string[];
+};
+
+export type AgentServiceRequest =
+  | AgentReportRequest
+  | AgentQaRequest
+  | AgentChecklistExplanationRequest;
 
 export type AgentServiceSuccess = {
   ok: true;
@@ -41,7 +54,31 @@ export type AgentServiceSuccess = {
   traceId: string;
   contractVersion: ContractVersion;
   observedAt: string;
+  markdown: string;
   text: string;
+  warnings: string[];
+  data:
+    | {
+        report: {
+          shortTermMarkdown: string;
+          longTermMarkdown: string;
+          disclaimerMarkdown: string;
+        };
+        analysisGuard: AgentAnalysisGuard;
+      }
+    | {
+        qa: {
+          answerMarkdown: string;
+        };
+        analysisGuard: AgentAnalysisGuard;
+      }
+    | {
+        checklistExplanation: {
+          summaryMarkdown: string;
+          items: AgentChecklistExplanationItem[];
+        };
+        analysisGuard: AgentAnalysisGuard;
+      };
   evidence: AgentServiceEvidence[];
 };
 
@@ -51,14 +88,17 @@ export type AgentServiceFailure = {
   traceId: string;
   contractVersion: ContractVersion;
   observedAt: string;
+  markdown: "";
   text: "";
+  warnings: [];
   error: {
     code:
       | "invalid_request"
       | "missing_env"
       | "method_not_allowed"
       | "not_found"
-      | "pi_agent_error";
+      | "pi_agent_error"
+      | "pi_agent_malformed_output";
     message: string;
   };
   evidence: AgentServiceEvidence[];

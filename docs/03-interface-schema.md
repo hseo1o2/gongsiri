@@ -120,6 +120,7 @@ Response policy:
 - every success payload echoes the `view`
 - list/detail/manual-check each return a page-specific shape
 - cold-load fallback is explicit via `fallback.used` + `fallback.reason`
+- once report cache exists, `report-list` and cached `report-detail` may return `fallback.used: false`
 
 ### Report list response shape
 Purpose: feed `frontend/app/(app)/report/page.tsx` without requiring report-history persistence.
@@ -166,6 +167,11 @@ type ReportDetailResponse = {
 };
 ```
 
+G007 cache rule:
+- `report-detail` must read saved detail first when a cached row exists for the requested `corpCode`;
+- explicit reanalyze/refresh may bypass cache and overwrite the saved row;
+- agent failure must not write fake success rows.
+
 ### Manual-check response shape
 Purpose: feed the dashboard “지금 체크” interaction without adding separate route families in this slice.
 
@@ -192,6 +198,14 @@ Required fields:
 - `score: int`
 - `reason: str`
 - `evidence: list[str]`
+- `evidence_refs: Array<{ label: str; source: str; observed_at?: str | None }>`
+- `source: str` (`"deterministic_backend"` in G006)
+- `observed_at?: str | None`
+
+Interpretation:
+- `risk_score` / `risk_level` / checklist `score` remain **deterministic backend truth**
+- structured checklist facts are reusable for UI/storage/QA
+- agent-written Markdown explanation is a **separate surface** and must not overwrite numeric guard fields
 
 ### `AnalysisResult`
 Required fields:
@@ -223,3 +237,116 @@ Guardrails:
 - The Pi SDK agent service must not call backend HTTP routes.
 - Report and QA paths are strict Pi SDK-first; typed agent failures must not be hidden by legacy Solar-only fallback.
 - User-facing narrative/error text must speak in first person as `공시리`.
+
+G006 boundary example:
+
+```ts
+type AgentAnalysisGuard = {
+  riskScore: number;
+  riskLevel: "normal" | "caution" | "high";
+  checklistIds: string[];
+};
+
+type AgentChecklistExplanationResult = {
+  mode: "checklist_explanation";
+  markdown: string;
+  data: {
+    checklistExplanation: {
+      summaryMarkdown: string;
+      items: Array<{ id: string; markdown: string }>;
+    };
+    analysisGuard: AgentAnalysisGuard;
+  };
+};
+```
+
+The backend may merge Markdown fields from the agent, but it must reject or ignore any response that attempts to alter `riskScore`, `riskLevel`, or checklist IDs relative to backend deterministic truth.
+
+## G009 External API Data Plane Boundary
+
+Source contract: `docs/12-external-api-registry.md`; implementation surface:
+- `backend/schemas/external_api.py`
+- `backend/collector/adapters/external_registry.py`
+- `backend/collector/adapters/external_api.py`
+- `backend/routes/external_api_routes.py`
+
+Rules:
+- deterministic REST/source adapters fetch and normalize facts;
+- 공시리 agent consumes normalized JSON facts and must not browse raw external sources directly for these paths;
+- typed degraded/unavailable states are part of the contract, not exceptional hidden behavior;
+- k-skill remains a distillation reference only, not a shipped dependency.
+
+## G010 Narrative Ownership Boundary
+
+Backend analyzer truth after G010:
+- deterministic `risk_score`, `risk_level`, checklist facts, and preparation DTOs remain backend-owned
+- final Markdown narrative fields (`short_term_report`, `long_term_report`, Q&A answer, checklist explanation Markdown) are 공시리 agent outputs over normalized facts
+- typed agent failures must surface instead of reviving legacy Solar-only fallback prose
+
+## G007 Report Cache / QA History Boundary
+
+Backend persistence after real success:
+- `POST /api/v1/reports` with `view: "report-detail"` may save generated detail into `analysis_reports`
+- `GET /api/v1/qa-history?corp_code=...` returns saved Q&A history scoped to the dev user and optional corp code
+- frontend BFF `POST /api/qa` proxies to backend `POST /qa`
+- backend `POST /qa` saves Q&A only after a real 공시리 answer succeeds
+
+## Dev DB Persistence Contract (#44)
+
+Source contract: `docs/11-dev-db-contract.md`; source implementation: `backend/storage/schema.py` and `backend/storage/repositories.py`.
+
+The dev DB contract is backend-internal and does not replace API DTO truth in this file or Pi runtime envelope truth in `docs/07-pi-agent-contracts.md`. FastAPI routes must depend on repository ports instead of SQLite details so a later Supabase adapter can be added without frontend or agent direct DB access.
+
+Guardrails:
+- default first pass is local SQLite/in-memory, not Supabase;
+- `source_version` and ISO timestamp fields support stale/cache semantics;
+- report/QA cache rows may only represent real pipeline + Pi SDK agent outputs, not fake fallback success;
+- the agent service never calls DB repositories directly.
+
+## Dev Auth Session Contract (#28/#42)
+
+Source contract: `docs/11-dev-db-contract.md`; backend route: `POST /api/v1/dev/auth/login`; frontend BFF route: `POST /api/auth/login`.
+
+Request:
+
+```ts
+type DevAuthLoginRequest = {
+  username: string;
+  password: string;
+};
+```
+
+Success response:
+
+```ts
+type DevAuthLoginResponse = {
+  ok: true;
+  authMode: "dev";
+  session: {
+    userId: string;
+    username: string;
+    role: "admin" | string;
+    displayName: string;
+    expiresInSeconds: number;
+  };
+  token: `dev-session:${string}`;
+  expiresInSeconds: number;
+  evidence: Array<{ source: "dev_db_users"; userId: string; sourceVersion: string }>;
+};
+```
+
+Failure response uses the existing typed error style:
+
+```ts
+type DevAuthFailure = {
+  ok: false;
+  authMode: "dev";
+  observedAt: string;
+  error: { code: "dev_auth_disabled" | "invalid_request" | "invalid_credentials"; message: string };
+};
+```
+
+Guardrails:
+- `GONGSIRI_AUTH_MODE=dev` is required for the seeded `admin/admin` path; unset means disabled.
+- The returned token is a dev-session marker stored by the frontend in an HTTP-only cookie, not a production JWT or secret.
+- Signup remains a UX shell until production auth work is explicitly scoped.

@@ -18,6 +18,14 @@ export interface ChecklistItemContract {
   score: number
   reason: string
   evidence: string[]
+  evidenceRefs?: Array<{
+    label: string
+    source: string
+    observedAt?: string | null
+  }>
+  source?: string
+  observedAt?: string | null
+  explanationMarkdown?: string
 }
 
 export interface ReportSummaryContract {
@@ -44,6 +52,7 @@ export interface ReportListRequest {
 export interface ReportDetailRequest {
   view: 'report-detail'
   corpCode: string
+  forceRefresh?: boolean
 }
 
 export interface ManualCheckRequest {

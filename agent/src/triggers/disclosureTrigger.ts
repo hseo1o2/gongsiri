@@ -3,11 +3,9 @@ import type {
   DisclosureTriggerRequest,
   TriggerSource
 } from "../contracts/request.js";
-import type { PipelineResult, PipelineTriggerRequest } from "../contracts/pipeline.js";
 import type {
   ToolResultFailure,
   ToolResultSuccess,
-  TriggerCheckpoint,
   TriggeredDisclosureResult
 } from "../contracts/response.js";
 import type { ToolDefinition } from "../contracts/tool.js";
@@ -16,118 +14,17 @@ import {
   LocalDisclosureCheckpointStore,
   resolveCheckpointPath
 } from "../state/disclosureCheckpoint.js";
+import {
+  buildCheckpoint,
+  buildFailureResult,
+  collectNewDisclosureIds,
+  readPreviousLastSeen,
+  resolveCanonicalCorpCode,
+  resolveCurrentLastSeen,
+  resolveRequestKey,
+  VALID_SOURCES
+} from "./disclosureTriggerSupport.js";
 
-const VALID_SOURCES: TriggerSource[] = ["user", "system", "cron"];
-
-const buildCheckpoint = (
-  checkpointPath: string,
-  previousLastSeen: string | null,
-  currentLastSeen: string | null
-): TriggerCheckpoint => ({
-  checkpointPath,
-  previousLastSeen,
-  currentLastSeen
-});
-
-const buildFailureResult = (
-  request: DisclosureTriggerRequest,
-  result: ToolResultFailure,
-  previousLastSeen: string | null,
-  checkpointPath: string
-): TriggeredDisclosureResult => ({
-  ok: false,
-  triggerSource: request.source,
-  traceId: result.traceId,
-  contractVersion: result.contractVersion,
-  hasNewDisclosure: false,
-  newDisclosureCount: 0,
-  newDisclosureIds: [],
-  checkpoint: buildCheckpoint(checkpointPath, previousLastSeen, previousLastSeen),
-  result
-});
-
-const collectNewDisclosureIds = (
-  disclosures: ToolResultSuccess["data"]["disclosures"],
-  previousLastSeen: string | null
-): string[] => {
-  if (!previousLastSeen) {
-    return [];
-  }
-
-  const newIds: string[] = [];
-
-  for (const disclosure of disclosures) {
-    if (disclosure.rcept_no === previousLastSeen) {
-      break;
-    }
-
-    newIds.push(disclosure.rcept_no);
-  }
-
-  return newIds;
-};
-
-const resolveCurrentLastSeen = (result: ToolResultSuccess): string | null =>
-  result.data.disclosures[0]?.rcept_no ?? null;
-
-const resolveRequestKey = (request: DisclosureTriggerRequest): string | null =>
-  request.corpCode ?? request.keyword ?? null;
-
-const resolveCanonicalCorpCode = (
-  request: DisclosureTriggerRequest,
-  result: ToolResultSuccess
-): string =>
-  result.data.corpCode || request.corpCode || request.keyword || "unknown";
-
-const buildPipelineTriggerRequest = (
-  request: DisclosureTriggerRequest,
-  canonicalKey: string,
-  _newDisclosureIds: string[]
-): PipelineTriggerRequest => ({
-  source: request.source,
-  ...(canonicalKey !== "unknown" ? { corpCode: canonicalKey } : {}),
-  ...(request.keyword ? { keyword: request.keyword } : {}),
-  traceId: request.traceId,
-  contractVersion: request.contractVersion,
-  ...(request.metadata ? { metadata: request.metadata } : {})
-});
-
-const shouldInvokePipeline = (
-  request: DisclosureTriggerRequest,
-  previousLastSeen: string | null,
-  hasNewDisclosure: boolean
-): boolean => request.source === "user" || (Boolean(previousLastSeen) && hasNewDisclosure);
-
-const readPreviousLastSeen = (
-  checkpointStore: LocalDisclosureCheckpointStore,
-  canonicalKey: string,
-  requestKey: string | null
-): { previousLastSeen: string | null; migratedFromRequestKey: boolean } => {
-  const canonicalCheckpoint = checkpointStore.read(canonicalKey);
-
-  if (canonicalCheckpoint) {
-    return {
-      previousLastSeen: canonicalCheckpoint,
-      migratedFromRequestKey: false
-    };
-  }
-
-  if (requestKey && requestKey !== canonicalKey) {
-    const legacyCheckpoint = checkpointStore.read(requestKey);
-
-    if (legacyCheckpoint) {
-      return {
-        previousLastSeen: legacyCheckpoint,
-        migratedFromRequestKey: true
-      };
-    }
-  }
-
-  return {
-    previousLastSeen: null,
-    migratedFromRequestKey: false
-  };
-};
 
 export const createDisclosureTriggerRequest = (
   input: DisclosureTriggerInput
@@ -172,8 +69,6 @@ export const runTriggeredDisclosureCheck = async (
   options: {
     tool?: ToolDefinition;
     checkpointStore?: LocalDisclosureCheckpointStore;
-    pipelineRunner?: (request: PipelineTriggerRequest) => Promise<PipelineResult>;
-    pipelineTool?: { invoke(request: PipelineTriggerRequest): Promise<PipelineResult> };
   } = {}
 ): Promise<TriggeredDisclosureResult> => {
   const tool = options.tool ?? fetchDisclosuresTool;
@@ -201,16 +96,6 @@ export const runTriggeredDisclosureCheck = async (
   const newDisclosureIds = collectNewDisclosureIds(result.data.disclosures, previousLastSeen);
   const hasNewDisclosure = previousLastSeen ? newDisclosureIds.length > 0 : false;
 
-  let pipelineResult: PipelineResult | undefined;
-
-  const pipelineRunner = options.pipelineRunner ?? options.pipelineTool?.invoke.bind(options.pipelineTool);
-
-  if (pipelineRunner && shouldInvokePipeline(request, previousLastSeen, hasNewDisclosure)) {
-    pipelineResult = await pipelineRunner(
-      buildPipelineTriggerRequest(request, canonicalKey, newDisclosureIds)
-    );
-  }
-
   if (currentLastSeen) {
     checkpointStore.write(canonicalKey, currentLastSeen);
 
@@ -228,7 +113,6 @@ export const runTriggeredDisclosureCheck = async (
     newDisclosureCount: newDisclosureIds.length,
     newDisclosureIds,
     checkpoint: buildCheckpoint(checkpointStore.checkpointPath, previousLastSeen, currentLastSeen),
-    result,
-    ...(pipelineResult ? { pipelineResult } : {})
+    result
   };
 };

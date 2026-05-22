@@ -45,6 +45,9 @@ class AgentServiceClient:
     def answer_qa(self, payload: dict[str, Any]) -> dict[str, Any]:
         return self._post_json("/qa", payload)
 
+    def explain_checklist(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return self._post_json("/checklist-explanation", payload)
+
     def _post_json(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
         url = urljoin(f"{self.base_url}/", path.lstrip("/"))
         try:
@@ -52,7 +55,7 @@ class AgentServiceClient:
         except requests.RequestException as exc:
             raise AgentServiceError(
                 "agent_unavailable",
-                f"저 공시리가 Pi agent service({self.base_url})에 연결하지 못했습니다: {exc}",
+                f"저 공시리가 공시리 응답 서비스에 연결하지 못했습니다: {exc}",
                 status_code=503,
                 evidence=[{"source": "agent_http", "url": self.base_url, "path": path}],
             ) from exc
@@ -62,7 +65,7 @@ class AgentServiceClient:
         except ValueError as exc:
             raise AgentServiceError(
                 "agent_malformed_response",
-                "저 공시리가 Pi agent service에서 JSON 응답을 받지 못했습니다.",
+                "저 공시리가 공시리 응답 서비스에서 JSON 응답을 받지 못했습니다.",
                 status_code=502,
                 evidence=[
                     {
@@ -77,7 +80,7 @@ class AgentServiceClient:
         if not isinstance(body, dict):
             raise AgentServiceError(
                 "agent_malformed_response",
-                "저 공시리가 Pi agent service 응답을 JSON 객체로 해석하지 못했습니다.",
+                "저 공시리가 공시리 응답을 JSON 객체로 해석하지 못했습니다.",
                 status_code=502,
                 evidence=[{"source": "agent_http", "url": self.base_url, "path": path}],
             )
@@ -88,7 +91,7 @@ class AgentServiceClient:
             message = str(
                 error.get("message")
                 or (
-                    "저 공시리가 Pi agent service에서 "
+                    "저 공시리가 공시리 응답 서비스에서 "
                     f"HTTP {response.status_code} 응답을 받았습니다."
                 )
             )

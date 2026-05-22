@@ -393,10 +393,9 @@ printf '%s\n' '{"ok":true,"traceId":"cli-trace","contractVersion":"v1","observed
   }
 });
 
-test("first cron run initializes checkpoint without invoking pipeline for historical disclosures", async () => {
+test("first cron run initializes checkpoint without downstream pipeline surface", async () => {
   const checkpointPath = makeCheckpointPath();
   const checkpointStore = new LocalDisclosureCheckpointStore(checkpointPath);
-  const pipelineCalls = [];
 
   const result = await runTriggeredDisclosureCheck(
     createDisclosureTriggerRequest({ source: "cron", keyword: "카카오", traceId: "first-cron" }),
@@ -419,26 +418,18 @@ test("first cron run initializes checkpoint without invoking pipeline for histor
           },
           evidence: []
         })
-      },
-      pipelineTool: {
-        invoke: async (request) => {
-          pipelineCalls.push(request);
-          return { ok: true };
-        }
       }
     }
   );
 
   assert.equal(result.ok, true);
   assert.equal(result.hasNewDisclosure, false);
-  assert.equal(pipelineCalls.length, 0);
 });
 
-test("subsequent cron run with new disclosures invokes pipeline once with canonical corpCode", async () => {
+test("subsequent cron run with new disclosures still reports canonical ids", async () => {
   const checkpointPath = makeCheckpointPath();
   const checkpointStore = new LocalDisclosureCheckpointStore(checkpointPath);
   checkpointStore.write("00258801", "202605200002");
-  const pipelineCalls = [];
 
   const result = await runTriggeredDisclosureCheck(
     createDisclosureTriggerRequest({ source: "cron", keyword: "카카오", traceId: "cron-new" }),
@@ -461,41 +452,18 @@ test("subsequent cron run with new disclosures invokes pipeline once with canoni
           },
           evidence: []
         })
-      },
-      pipelineTool: {
-        invoke: async (request) => {
-          pipelineCalls.push(request);
-          return {
-            ok: true,
-            triggerSource: request.source,
-            traceId: request.traceId,
-            contractVersion: request.contractVersion,
-            observedAt: "2026-05-20T12:11:00Z",
-            result: { normalized_data_bundle: {}, analysis_result: {}, preparation: {} },
-            evidence: []
-          };
-        }
       }
     }
   );
 
   assert.equal(result.ok, true);
-  assert.equal(pipelineCalls.length, 1);
-  assert.deepEqual(pipelineCalls[0], {
-    source: "cron",
-    corpCode: "00258801",
-    keyword: "카카오",
-    traceId: "cron-new",
-    contractVersion: "v1"
-  });
-  assert.equal(result.pipelineResult.ok, true);
+  assert.deepEqual(result.newDisclosureIds, ["202605200003"]);
 });
 
-test("manual user trigger invokes pipeline even without a new disclosure", async () => {
+test("manual user trigger no longer exposes agent-side pipeline execution", async () => {
   const checkpointPath = makeCheckpointPath();
   const checkpointStore = new LocalDisclosureCheckpointStore(checkpointPath);
   checkpointStore.write("00258801", "202605200010");
-  const pipelineCalls = [];
 
   const result = await runTriggeredDisclosureCheck(
     createDisclosureTriggerRequest({ source: "user", keyword: "카카오", traceId: "manual-no-new" }),
@@ -517,27 +485,11 @@ test("manual user trigger invokes pipeline even without a new disclosure", async
           },
           evidence: []
         })
-      },
-      pipelineTool: {
-        invoke: async (request) => {
-          pipelineCalls.push(request);
-          return {
-            ok: false,
-            triggerSource: request.source,
-            traceId: request.traceId,
-            contractVersion: request.contractVersion,
-            observedAt: "2026-05-20T12:31:00Z",
-            error: { code: "pipeline_failed", message: "stub failure" },
-            evidence: []
-          };
-        }
       }
     }
   );
 
   assert.equal(result.ok, true);
   assert.equal(result.hasNewDisclosure, false);
-  assert.equal(pipelineCalls.length, 1);
-  assert.equal(result.pipelineResult.ok, false);
-  assert.equal(result.pipelineResult.error.code, "pipeline_failed");
+  assert.equal("pipelineResult" in result, false);
 });

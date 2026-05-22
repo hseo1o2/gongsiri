@@ -28,7 +28,7 @@ export type PiRunResult = {
 const requireApiKey = (): string => {
   const key = process.env.UPSTAGE_API_KEY?.trim();
   if (!key) {
-    throw new Error("저 공시리가 strict Pi SDK로 답변하려면 UPSTAGE_API_KEY가 필요합니다.");
+    throw new Error("저 공시리가 답변을 준비하려면 UPSTAGE_API_KEY가 필요합니다.");
   }
   return key;
 };
@@ -71,7 +71,7 @@ export const runPiSession = async (prompt: string): Promise<PiRunResult> => {
   const registry = createRegistry(requireApiKey(), modelId);
   const model = registry.find(PROVIDER, modelId);
   if (!model) {
-    throw new Error(`저 공시리가 사용할 Pi 모델을 찾지 못했습니다: ${PROVIDER}/${modelId}`);
+    throw new Error("저 공시리가 사용할 답변 모델을 찾지 못했습니다.");
   }
 
   let text = "";
@@ -102,7 +102,7 @@ export const runPiSession = async (prompt: string): Promise<PiRunResult> => {
     noTools: "all"
   });
 
-  const unsubscribe = session.subscribe((event) => {
+  const unsubscribe = session.subscribe((event: unknown) => {
     const candidate = event as {
       type?: string;
       assistantMessageEvent?: { type?: string; delta?: string };
@@ -120,7 +120,7 @@ export const runPiSession = async (prompt: string): Promise<PiRunResult> => {
     await session.prompt(prompt, { source: "rpc" });
     const finalText = text.trim();
     if (!finalText) {
-      throw new Error("저 공시리가 Pi SDK 응답 본문을 받지 못했습니다.");
+      throw new Error("저 공시리가 답변 본문을 받지 못했습니다.");
     }
     return { text: finalText, model: `${PROVIDER}/${modelId}` };
   } finally {

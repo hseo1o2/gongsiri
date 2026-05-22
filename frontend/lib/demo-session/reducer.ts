@@ -1,5 +1,5 @@
-import type { ReportDetailContract } from '@/lib/api/types'
-import type { CompanyInfo } from '@/lib/types'
+import type { ReportDetailContract, ReportSummaryContract } from '@/lib/api/types'
+import type { CompanyInfo, WatchlistItem } from '@/lib/types'
 import type { DemoDashboardSummary, DemoQaStockOption, DemoSessionAction, DemoSessionState } from './types'
 import { createInitialDemoSessionState } from './seed'
 
@@ -8,6 +8,19 @@ export function demoSessionReducer(
   action: DemoSessionAction,
 ): DemoSessionState {
   switch (action.type) {
+    case 'session/loadStart':
+      return { ...state, loadStatus: { state: 'loading', message: '' } }
+    case 'session/loadSuccess':
+      return {
+        ...state,
+        watchlistByCorpCode: byCorpCode(action.watchlist),
+        watchlistOrder: action.watchlist.map(item => item.corp_code),
+        reportSummariesByCorpCode: byCorpCode(action.watchlist.map(toReportSummary)),
+        recentDisclosures: action.recentDisclosures,
+        loadStatus: { state: 'ready', message: '' },
+      }
+    case 'session/loadError':
+      return { ...state, loadStatus: { state: 'error', message: action.message } }
     case 'watchlist/add': {
       const corpCode = action.item.corp_code
       if (state.watchlistByCorpCode[corpCode]) {
@@ -94,6 +107,25 @@ function upsertReportDetail(
   }
 }
 
+function byCorpCode<T extends { corpCode?: string; corp_code?: string }>(items: T[]): Record<string, T> {
+  return Object.fromEntries(
+    items.flatMap(item => {
+      const corpCode = item.corpCode ?? item.corp_code
+      return corpCode ? [[corpCode, item]] : []
+    }),
+  )
+}
+
+function toReportSummary(item: WatchlistItem): ReportSummaryContract {
+  return {
+    corpCode: item.corp_code,
+    corpName: item.corp_name,
+    analyzedAt: item.last_analyzed ?? '데모 DB',
+    riskLevel: item.risk_level ?? 'normal',
+    riskScore: item.risk_score ?? 0,
+  }
+}
+
 export function selectWatchlist(state: DemoSessionState) {
   return state.watchlistOrder.flatMap(code => state.watchlistByCorpCode[code] ?? [])
 }
@@ -108,7 +140,7 @@ export function selectDashboardSummary(state: DemoSessionState): DemoDashboardSu
   const watchlist = selectWatchlist(state)
   return {
     count: watchlist.length,
-    todayDisclosures: state.lastManualCheck?.acceptedCorpCodes.length ?? 0,
+    todayDisclosures: state.lastManualCheck?.acceptedCorpCodes.length ?? state.recentDisclosures.filter(item => item.time === state.recentDisclosures[0]?.time).length,
     cautionCount: watchlist.filter(item => item.risk_level === 'caution').length,
     dangerCount: watchlist.filter(item => item.risk_level === 'high').length,
   }

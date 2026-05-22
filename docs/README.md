@@ -15,3 +15,7 @@ Pi bootstrap milestone의 repo-local source of truth 문서:
 - G001 — bootstrap runtime + disclosure bridge
 - G002 — trigger source(`user | system | cron`) + manual trigger + scheduler surface + local checkpoint detection
 - `10-agent-pipeline-takeover-backlog.md` — deferred backlog and guardrails for the agent pipeline takeover
+- `11-dev-db-contract.md` — #44/#43 dev SQLite schema, repository, and seed fixture contract for #27/#31/#32/#33
+- `12-external-api-registry.md` — #34-#38 deterministic external adapter registry and data-plane boundary
+- `13-end-to-end-state-matrix.md` — #41 auth→dashboard→watchlist→report detail→Q&A state coverage matrix
+- `14-k-skill-distillation-guideline.md` — #45 k-skill distillation rule for adapter/prompt borrowing

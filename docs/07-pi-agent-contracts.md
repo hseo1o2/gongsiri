@@ -142,75 +142,9 @@ Rules:
 - failed runs must not advance the checkpoint
 - first successful run initializes checkpoint state without counting all existing disclosures as new
 
-## G003 Pipeline Contract
+## G003 Pipeline Contract Note
 
-Tool name: `run_analysis_pipeline`
-
-Accepted request:
-
-```ts
-type PipelineTriggerRequest = {
-  source: "user" | "system" | "cron";
-  keyword?: string;
-  corpCode?: string;
-  traceId?: string;
-  contractVersion?: "v1";
-  metadata?: {
-    intervalMinutes?: number;
-    runReason?: string;
-  };
-};
-```
-
-Rules:
-- at least one of `keyword` or `corpCode` must be present
-- runtime pipeline path must support both request forms
-- pipeline normalization path must be read-only/additive
-
-Returned envelope:
-
-```ts
-type PipelineResult = {
-  ok: boolean;
-  triggerSource: "user" | "system" | "cron";
-  traceId: string;
-  contractVersion: "v1";
-  observedAt: string;
-  result?: {
-    normalizedDataBundle: Record<string, unknown>;
-    analysisResult: {
-      risk_score: number;
-      risk_level: "normal" | "caution" | "high";
-      checklist: Array<{
-        id: string;
-        title: string;
-        status: "pass" | "fail" | "unknown";
-        score: number;
-        reason: string;
-        evidence: string[];
-      }>;
-      short_term_report: string;
-      long_term_report: string;
-      disclaimer: string;
-      missing_evidence: string[];
-    };
-    preparation: {
-      persistence: Record<string, unknown>;
-      notification: Record<string, unknown>;
-    };
-  };
-  error?: {
-    code: string;
-    message: string;
-  };
-  evidence: Array<Record<string, unknown>>;
-};
-```
-
-Rules:
-- stdout must remain JSON-only
-- failures must remain machine-readable
-- preparation payloads are interfaces only and must not trigger real DB writes or notification delivery
+The former agent-side `run_analysis_pipeline` tool/CLI surface is removed. Pipeline execution is backend-owned, and the agent no longer calls backend HTTP routes directly.
 
 ## Solar Chat Contract
 
@@ -269,19 +203,28 @@ Local service:
 - `GET /health`
 - `POST /report`
 - `POST /qa`
+- `POST /checklist-explanation`
 - default bind: `GONGSIRI_AGENT_HOST=127.0.0.1`, `GONGSIRI_AGENT_PORT=8787`
 - backend base URL: `GONGSIRI_AGENT_URL` or `AGENT_SERVICE_URL`, default `http://127.0.0.1:8787`
 
 Request envelope:
 
 ```ts
+type AgentAnalysisGuard = {
+  riskScore: number;
+  riskLevel: "normal" | "caution" | "high";
+  checklistIds: string[];
+};
+
 type AgentServiceRequest = {
+  mode?: "report" | "qa" | "checklist_explanation";
   traceId?: string;
   contractVersion?: "v1";
   source?: "user" | "system" | "cron";
   corpCode?: string;
   corpName?: string;
   question?: string; // required for /qa
+  checklistIds?: string[]; // optional focus list for /checklist-explanation
   normalizedDataBundle?: Record<string, unknown>;
   bundle?: Record<string, unknown>;
   analysisResult?: Record<string, unknown>;
@@ -296,27 +239,54 @@ Response envelope:
 type AgentServiceResponse =
   | {
       ok: true;
-      mode: "report" | "qa";
+      mode: "report" | "qa" | "checklist_explanation";
       traceId: string;
       contractVersion: "v1";
       observedAt: string;
+      markdown: string;
       text: string;
+      warnings: string[];
+      data:
+        | {
+            report: {
+              shortTermMarkdown: string;
+              longTermMarkdown: string;
+              disclaimerMarkdown: string;
+            };
+            analysisGuard: AgentAnalysisGuard;
+          }
+        | {
+            qa: {
+              answerMarkdown: string;
+            };
+            analysisGuard: AgentAnalysisGuard;
+          }
+        | {
+            checklistExplanation: {
+              summaryMarkdown: string;
+              items: Array<{ id: string; title?: string; markdown: string }>;
+            };
+            analysisGuard: AgentAnalysisGuard;
+          };
       evidence: Array<Record<string, unknown>>;
     }
   | {
       ok: false;
-      mode: "report" | "qa";
+      mode: "report" | "qa" | "checklist_explanation";
       traceId: string;
       contractVersion: "v1";
       observedAt: string;
+      markdown: "";
       text: "";
+      warnings: [];
       error: {
         code:
           | "invalid_request"
           | "method_not_allowed"
           | "not_found"
           | "missing_env"
-          | "pi_agent_error";
+          | "pi_agent_error"
+          | "pi_agent_malformed_output";
         message: string;
       };
       evidence: Array<Record<string, unknown>>;
@@ -324,8 +294,9 @@ type AgentServiceResponse =
 ```
 
 Rules:
-- `POST /report` and `POST /qa` must use the Pi SDK (`createAgentSession`) with Upstage configured as an OpenAI-compatible provider.
+- `POST /report`, `POST /qa`, and `POST /checklist-explanation` must use the Pi SDK (`createAgentSession`) with Upstage configured as an OpenAI-compatible provider.
 - Strict Pi SDK-first: backend must not fall back to legacy Solar-only QA/report generation when the agent service fails.
 - The agent service is leaf-only: it must not call backend HTTP endpoints or mutate DB/report history.
 - Runtime tools are disabled for the demo path with `noTools: "all"`; all source material must come from backend-generated JSON context.
 - User-facing text must be Korean Markdown, first-person, and explicitly identify the speaker as `공시리`.
+- `analysisGuard` is backend-authored deterministic truth echoed through the service boundary; agent-written Markdown must not alter `riskScore`, `riskLevel`, or checklist IDs.

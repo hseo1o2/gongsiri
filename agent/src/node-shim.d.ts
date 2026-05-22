@@ -109,3 +109,47 @@ declare module "node:http" {
 
   export { createServer };
 }
+
+declare module "@earendil-works/pi-coding-agent" {
+  class AuthStorage {
+    static inMemory(): AuthStorage;
+    setRuntimeApiKey(provider: string, apiKey: string): void;
+  }
+
+  class ModelRegistry {
+    authStorage: AuthStorage;
+    static inMemory(authStorage: AuthStorage): ModelRegistry;
+    registerProvider(provider: string, config: Record<string, unknown>): void;
+    find(provider: string, modelId: string): unknown;
+  }
+
+  class DefaultResourceLoader {
+    constructor(options: Record<string, unknown>);
+    reload(): Promise<void>;
+  }
+
+  class SessionManager {
+    static inMemory(): SessionManager;
+  }
+
+  class SettingsManager {
+    static inMemory(settings: Record<string, unknown>): SettingsManager;
+  }
+
+  function createAgentSession(options: Record<string, unknown>): Promise<{
+    session: {
+      subscribe(listener: (event: unknown) => void): () => void;
+      prompt(prompt: string, options: { source: string }): Promise<void>;
+      dispose(): void;
+    };
+  }>;
+
+  export {
+    AuthStorage,
+    createAgentSession,
+    DefaultResourceLoader,
+    ModelRegistry,
+    SessionManager,
+    SettingsManager,
+  };
+}

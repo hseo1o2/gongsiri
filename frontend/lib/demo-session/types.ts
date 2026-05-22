@@ -1,5 +1,5 @@
 import type { ReportDetailContract, ReportSummaryContract, RiskLevel } from '@/lib/api/types'
-import type { WatchlistItem } from '@/lib/types'
+import type { DisclosureAlert, WatchlistItem } from '@/lib/types'
 
 export type DemoUserRole = 'admin' | 'user'
 
@@ -31,6 +31,8 @@ export interface DemoSessionState {
   lastManualCheck: DemoManualCheckSnapshot | null
   reportSummariesByCorpCode: Record<string, ReportSummaryContract>
   reportDetailsByCorpCode: Record<string, ReportDetailContract>
+  recentDisclosures: DisclosureAlert[]
+  loadStatus: { state: 'idle' | 'loading' | 'ready' | 'error'; message: string }
 }
 
 export interface DemoDashboardSummary {
@@ -47,6 +49,9 @@ export interface DemoQaStockOption {
 }
 
 export type DemoSessionAction =
+  | { type: 'session/loadStart' }
+  | { type: 'session/loadSuccess'; watchlist: WatchlistItem[]; recentDisclosures: DisclosureAlert[] }
+  | { type: 'session/loadError'; message: string }
   | { type: 'watchlist/add'; item: WatchlistItem }
   | { type: 'watchlist/remove'; corpCode: string }
   | { type: 'watchlist/notFound'; query: string }
