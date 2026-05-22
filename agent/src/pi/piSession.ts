@@ -1,6 +1,4 @@
-import * as nodeFs from "node:fs";
 import * as nodePath from "node:path";
-import * as nodeUrl from "node:url";
 import {
   AuthStorage,
   createAgentSession,
@@ -9,6 +7,7 @@ import {
   SessionManager,
   SettingsManager,
 } from "@earendil-works/pi-coding-agent";
+import { resolveAgentRoot } from "../agentPaths.js";
 
 const DEFAULT_MODEL = "solar-pro3";
 const PROVIDER = "upstage";
@@ -71,62 +70,6 @@ const createRegistry = (apiKey: string, modelId: string): ModelRegistry => {
   return registry;
 };
 
-// Skill shape matching @earendil-works/pi-coding-agent Skill interface
-type GongsiriSkill = {
-  name: string;
-  description: string;
-  filePath: string;
-  baseDir: string;
-  sourceInfo: {
-    path: string;
-    source: string;
-    scope: "project";
-    origin: "top-level";
-    baseDir?: string;
-  };
-  disableModelInvocation: boolean;
-};
-
-const resolveAgentRoot = (): string => {
-  // resolve agent root from this compiled file's location: dist/pi/ → dist/ → agent root
-  const currentDir =
-    typeof __dirname !== "undefined"
-      ? __dirname
-      : nodePath.dirname(nodeUrl.fileURLToPath(import.meta.url));
-  return nodePath.resolve(currentDir, "..", "..");
-};
-
-const loadGongsiriSkills = (skillsDir: string): GongsiriSkill[] => {
-  if (!nodeFs.existsSync(skillsDir)) {
-    return [];
-  }
-  const skills: GongsiriSkill[] = [];
-  for (const entry of nodeFs.readdirSync(skillsDir, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue;
-    const skillMd = nodePath.join(skillsDir, entry.name, "SKILL.md");
-    if (!nodeFs.existsSync(skillMd)) continue;
-    const content = nodeFs.readFileSync(skillMd, "utf8");
-    // Parse frontmatter name/description
-    const nameMatch = content.match(/^name:\s*(.+)$/m);
-    const descMatch = content.match(/^description:\s*(.+)$/m);
-    skills.push({
-      name: nameMatch?.[1]?.trim() ?? entry.name,
-      description: descMatch?.[1]?.trim() ?? "",
-      filePath: skillMd,
-      baseDir: nodePath.join(skillsDir, entry.name),
-      sourceInfo: {
-        path: skillMd,
-        source: "gongsiri-pi-skills",
-        scope: "project",
-        origin: "top-level",
-        baseDir: nodePath.join(skillsDir, entry.name),
-      },
-      disableModelInvocation: false,
-    });
-  }
-  return skills;
-};
-
 export const runPiSession = async (prompt: string): Promise<PiRunResult> => {
   const modelId = process.env.UPSTAGE_MODEL?.trim() || DEFAULT_MODEL;
   const registry = createRegistry(requireApiKey(), modelId);
@@ -138,27 +81,18 @@ export const runPiSession = async (prompt: string): Promise<PiRunResult> => {
   let text = "";
   const agentRoot = resolveAgentRoot();
   const agentDir = nodePath.join(agentRoot, ".runtime", "pi");
-  const skillsDir = nodePath.join(agentRoot, ".pi", "skills");
 
+  // SKILL.md 3종은 buildPrompt() 가 직접 읽어 프롬프트에 삽입하므로
+  // Pi 세션 레이어에서는 스킬을 로드하지 않는다 (noSkills: true).
   const loader = new DefaultResourceLoader({
     cwd: process.cwd(),
     agentDir,
     noExtensions: true,
-    noSkills: false,
+    noSkills: true,
     noPromptTemplates: true,
     noThemes: true,
     noContextFiles: true,
     systemPromptOverride: () => systemPrompt,
-    skillsOverride: (current: {
-      skills: GongsiriSkill[];
-      diagnostics: unknown[];
-    }) => {
-      const gongsiriSkills = loadGongsiriSkills(skillsDir);
-      return {
-        skills: [...current.skills, ...gongsiriSkills],
-        diagnostics: current.diagnostics,
-      };
-    },
   });
   await loader.reload();
 
