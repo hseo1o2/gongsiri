@@ -10,8 +10,8 @@ pre-commit:
       run: ruff check --fix {staged_files} && ruff format {staged_files}
       stage_fixed: true
     js-lint:
-      glob: "*.{js,jsx,mjs,cjs,ts,tsx}"
-      # pnpm --dir 로 실행 — cd 하면 {staged_files} 의 repo-root 상대경로가 깨진다.
+      glob: "frontend/**/*.{js,jsx,mjs,cjs,ts,tsx}"
+      # frontend 범위 파일만 처리 — agent/ 등 다른 TS 패키지는 각자 린트
       run: |
         if [ -f frontend/package.json ] && [ -d frontend/node_modules ]; then
           pnpm --dir frontend exec eslint --fix {staged_files}
