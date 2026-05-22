@@ -75,24 +75,36 @@ def test_dart_evidence_snapshot_maps_filing_and_financial_data(monkeypatch):
     monkeypatch.setattr(
         "backend.collector.adapters.external_api.fetch_disclosures",
         lambda corp_code: [
-            type("Disclosure", (), {"model_dump": lambda self: {
-                "rcept_no": "202605220001",
-                "report_nm": "정관변경결정",
-                "rcept_dt": "20260522",
-                "category": "business_purpose",
-                "url": "https://dart.example/1",
-            }})()
+            type(
+                "Disclosure",
+                (),
+                {
+                    "model_dump": lambda self: {
+                        "rcept_no": "202605220001",
+                        "report_nm": "정관변경결정",
+                        "rcept_dt": "20260522",
+                        "category": "business_purpose",
+                        "url": "https://dart.example/1",
+                    }
+                },
+            )()
         ],
         raising=False,
     )
     monkeypatch.setattr(
         "backend.collector.adapters.external_api.fetch_financials",
-        lambda corp_code: type("Financials", (), {"model_dump": lambda self: {
-            "revenue": 100.0,
-            "operating_income": 20.0,
-            "equity": 50.0,
-            "market_cap": None,
-        }})(),
+        lambda corp_code: type(
+            "Financials",
+            (),
+            {
+                "model_dump": lambda self: {
+                    "revenue": 100.0,
+                    "operating_income": 20.0,
+                    "equity": 50.0,
+                    "market_cap": None,
+                }
+            },
+        )(),
         raising=False,
     )
 

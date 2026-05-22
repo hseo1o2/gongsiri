@@ -53,16 +53,18 @@ def _save_qa_history_row(*, bundle: Any, question: str, answer: dict[str, Any]) 
     )
     corp_code = str(company.get("corp_code") or "")
     corp_name = str(company.get("corp_name") or corp_code)
-    row = build_dev_user_scoped_row({
-        "id": f"qa-{corp_code}-{uuid4()}",
-        "corp_code": corp_code,
-        "corp_name": corp_name,
-        "question": question,
-        "answer": str(answer.get("answer") or ""),
-        "evidence": answer.get("evidence") if isinstance(answer.get("evidence"), list) else [],
-        "asked_at": utc_now(),
-        "source_version": SCHEMA_VERSION,
-    })
+    row = build_dev_user_scoped_row(
+        {
+            "id": f"qa-{corp_code}-{uuid4()}",
+            "corp_code": corp_code,
+            "corp_name": corp_name,
+            "question": question,
+            "answer": str(answer.get("answer") or ""),
+            "evidence": answer.get("evidence") if isinstance(answer.get("evidence"), list) else [],
+            "asked_at": utc_now(),
+            "source_version": SCHEMA_VERSION,
+        }
+    )
     return get_repository_provider().qa_history.save_answer(row)
 
 
