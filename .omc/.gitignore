@@ -1,0 +1,7 @@
+# OMC runtime state is local-only by default.
+*
+
+# Project wiki is the shared exception.
+!.gitignore
+!wiki/
+!wiki/**

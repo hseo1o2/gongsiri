@@ -24,14 +24,18 @@ coverage/
 .DS_Store
 
 # Runtime cache / generated outputs
+output/
 data/
 *.log
 lefthook-local.yml
 
-# Agent state — local only; .omc/wiki/ is the team-shared exception
-.omc/*
-!.omc/wiki/
-!.omc/wiki/**
+# Agent state — local only; root .omc/wiki/ is the team-shared exception
+/.omc/*
+!/.omc/wiki/
+!/.omc/wiki/**
+*/.omc/
+*/*/.omc/
+*/*/*/.omc/
 .omx/
 .clawhip/
 .openchrome/
