@@ -19,7 +19,6 @@ from backend.storage.schema import SCHEMA_VERSION
 router = APIRouter(prefix="/api/v1/dev", tags=["dev-data"])
 
 
-
 def _latest_reports_by_corp(provider: Any) -> dict[str, dict[str, Any]]:
     return {
         str(row["corp_code"]): row
@@ -174,12 +173,14 @@ def _watchlist_payload(payload: dict[str, Any]) -> dict[str, Any]:
     market = str(payload.get("market") or "").strip()
     if not all((corp_code, corp_name, stock_code, market)):
         raise ValueError("corp_code, corp_name, stock_code, market은 모두 필요합니다.")
-    return build_dev_user_scoped_row({
-        "id": f"watch-{corp_code}",
-        "corp_code": corp_code,
-        "corp_name": corp_name,
-        "stock_code": stock_code,
-        "market": market,
-        "added_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
-        "source_version": SCHEMA_VERSION,
-    })
+    return build_dev_user_scoped_row(
+        {
+            "id": f"watch-{corp_code}",
+            "corp_code": corp_code,
+            "corp_name": corp_name,
+            "stock_code": stock_code,
+            "market": market,
+            "added_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+            "source_version": SCHEMA_VERSION,
+        }
+    )

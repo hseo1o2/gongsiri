@@ -3,7 +3,12 @@ from __future__ import annotations
 from typing import Any
 
 from backend.agent_client import AgentServiceClient, AgentServiceError
-from backend.agent_runtime_common import agent_evidence, agent_payload_data, first_text, validate_analysis_guard
+from backend.agent_runtime_common import (
+    agent_evidence,
+    agent_payload_data,
+    first_text,
+    validate_analysis_guard,
+)
 
 
 def answer_qa_with_agent(
@@ -91,9 +96,7 @@ def explain_checklist_with_agent(
         else {}
     )
     items = (
-        checklist_payload.get("items")
-        if isinstance(checklist_payload.get("items"), list)
-        else []
+        checklist_payload.get("items") if isinstance(checklist_payload.get("items"), list) else []
     )
     if not items:
         raise AgentServiceError(

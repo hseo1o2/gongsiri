@@ -79,9 +79,7 @@ def merge_checklist_explanations(
         str(item.get("id") or "") for item in checklist if isinstance(item, dict) and item.get("id")
     }
     actual_ids = {
-        item_id
-        for item_id, markdown in explanation_by_id.items()
-        if item_id and markdown.strip()
+        item_id for item_id, markdown in explanation_by_id.items() if item_id and markdown.strip()
     }
     if expected_ids != actual_ids:
         raise AgentServiceError(
