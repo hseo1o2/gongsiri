@@ -1,4 +1,5 @@
 import json
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from statistics import mean
 from typing import Any
@@ -8,7 +9,114 @@ import requests
 from backend.schemas.bundle import DailyPriceVolume, PriceVolumeData
 
 K_SKILL_TRADE_INFO_URL = "https://k-skill-proxy.nomadamas.org/v1/korean-stock/trade-info"
+
+# k-skill-proxy 데이터셋의 최신 영업일. trade-info 엔드포인트는 bas_dd 1일만 받으므로
+# 시세 히스토리는 이 날짜를 기준으로 과거 방향으로 하루씩 호출해서 모은다.
 DEFAULT_BAS_DD = "20250516"
+
+# 최근 며칠치(달력일 기준)를 수집할지. 주말·휴장일은 자동으로 건너뛴다.
+DEFAULT_HISTORY_DAYS = 60
+
+
+def get_latest_business_day_bas_dd() -> str:
+    """KST 기준 현재 시각으로 가장 최근 영업일을 YYYYMMDD로 반환한다.
+
+    - 15:30 KST 이전이면 전 영업일(당일 종가 미확정)
+    - 토요일이면 금요일, 일요일이면 금요일
+    """
+    KST = timezone(timedelta(hours=9))
+    now_kst = datetime.now(KST)
+
+    cutoff_hour = 15
+    cutoff_minute = 30
+
+    # 15:30 KST 이전이면 어제부터 탐색
+    if (now_kst.hour, now_kst.minute) < (cutoff_hour, cutoff_minute):
+        candidate = now_kst.date() - timedelta(days=1)
+    else:
+        candidate = now_kst.date()
+
+    # 주말이면 직전 금요일로
+    while candidate.weekday() >= 5:  # 5=토, 6=일
+        candidate -= timedelta(days=1)
+
+    return candidate.strftime("%Y%m%d")
+
+
+def fetch_latest_price(
+    stock_code: str,
+    market: str,
+    timeout: float = 5.0,
+) -> tuple[float | None, float | None]:
+    """k-skill 프록시로 해당 종목의 최신 현재가·등락률을 조회한다.
+
+    k-skill이 당일 데이터를 아직 갖고 있지 않으면(not_found) 전 영업일로
+    최대 3회 폴백한다.
+
+    Returns:
+        (close_price, change_rate) — 실패·빈 응답이면 (None, None)
+    """
+    try:
+        if market not in {"KOSPI", "KOSDAQ", "KONEX"}:
+            return (None, None)
+
+        start_date = datetime.strptime(get_latest_business_day_bas_dd(), "%Y%m%d").date()
+
+        # not_found(데이터 미준비) 시 최대 3 영업일 전까지 폴백
+        candidate = start_date
+        for _ in range(3):
+            bas_dd = candidate.strftime("%Y%m%d")
+            params = {
+                "market": market,
+                "stock_code": stock_code,
+                "bas_dd": bas_dd,
+            }
+
+            response = requests.get(K_SKILL_TRADE_INFO_URL, params=params, timeout=timeout)
+
+            if response.status_code == 404:
+                # 해당 날짜 데이터 없음 → 전 영업일로 폴백
+                candidate -= timedelta(days=1)
+                while candidate.weekday() >= 5:
+                    candidate -= timedelta(days=1)
+                continue
+
+            if response.status_code != 200:
+                return (None, None)
+
+            data = response.json()
+
+            # error 필드가 있으면 not_found로 간주하고 폴백
+            if data.get("error"):
+                candidate -= timedelta(days=1)
+                while candidate.weekday() >= 5:
+                    candidate -= timedelta(days=1)
+                continue
+
+            # 응답에는 item(단건) 또는 items[0] 형태로 온다
+            item: dict[str, Any] | None = data.get("item")
+            if item is None:
+                items = data.get("items") or []
+                item = items[0] if items else None
+
+            if not item:
+                return (None, None)
+
+            close_price = item.get("close_price")
+            change_rate = item.get("change_rate")
+
+            if close_price is None and change_rate is None:
+                return (None, None)
+
+            return (
+                float(close_price) if close_price is not None else None,
+                float(change_rate) if change_rate is not None else None,
+            )
+
+        return (None, None)
+    except Exception:
+        return (None, None)
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 PRICE_CACHE_DIR = PROJECT_ROOT / "data" / "price_cache"
@@ -152,6 +260,50 @@ def fetch_trade_info_from_kskill(
     return daily_data
 
 
+def iter_business_days(end_bas_dd: str, days_back: int) -> list[str]:
+    """
+    end_bas_dd 부터 과거 방향으로 days_back일을 훑으면서 평일(월~금)만 YYYYMMDD로 반환한다.
+    공휴일·휴장일은 여기서 거를 수 없으므로 호출 측에서 not_found 응답을 무시한다.
+    """
+    end = date(int(end_bas_dd[:4]), int(end_bas_dd[4:6]), int(end_bas_dd[6:8]))
+
+    business_days = []
+    for offset in range(days_back):
+        day = end - timedelta(days=offset)
+        if day.weekday() >= 5:  # 5=토, 6=일
+            continue
+        business_days.append(day.strftime("%Y%m%d"))
+
+    return business_days
+
+
+def fetch_trade_info_history(
+    stock_code: str,
+    market: str,
+    end_bas_dd: str = DEFAULT_BAS_DD,
+    days_back: int = DEFAULT_HISTORY_DAYS,
+    known_dates: set[str] | None = None,
+) -> list[DailyPriceVolume]:
+    """
+    end_bas_dd 기준 최근 영업일들의 시세를 하루씩 호출해서 모은다.
+    known_dates에 이미 있는 날짜는 호출을 건너뛰어 캐시 증분 수집이 되게 한다.
+    """
+    known_dates = known_dates or set()
+
+    collected: list[DailyPriceVolume] = []
+    for bas_dd in iter_business_days(end_bas_dd, days_back):
+        if bas_dd in known_dates:
+            continue
+
+        try:
+            collected.extend(fetch_trade_info_from_kskill(stock_code, market, bas_dd))
+        except Exception:
+            # 휴장일(not_found)·일시적 오류는 건너뛰고 나머지 날짜를 계속 수집한다.
+            continue
+
+    return collected
+
+
 def merge_daily_data(
     old_data: list[DailyPriceVolume],
     new_data: list[DailyPriceVolume],
@@ -226,7 +378,7 @@ def get_trade_info(stock_code: str, market: str | None = None) -> PriceVolumeDat
 
     처리 순서:
     1. 기존 price_cache 로드
-    2. k-skill trade-info 호출
+    2. 캐시에 없는 영업일만 k-skill trade-info로 증분 호출
     3. 캐시와 병합
     4. 지표 계산
     """
@@ -236,8 +388,9 @@ def get_trade_info(stock_code: str, market: str | None = None) -> PriceVolumeDat
     fetched_daily = []
 
     if market:
+        known_dates = {item.date for item in cached_daily}
         try:
-            fetched_daily = fetch_trade_info_from_kskill(stock_code, market)
+            fetched_daily = fetch_trade_info_history(stock_code, market, known_dates=known_dates)
         except Exception:
             fetched_daily = []
 

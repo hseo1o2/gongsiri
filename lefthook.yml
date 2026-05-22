@@ -21,10 +21,10 @@ pre-commit:
       stage_fixed: true
     js-prettier:
       glob: "*.{js,jsx,mjs,cjs,ts,tsx,json,md}"
-      # pnpm --dir 로 실행 — cd 하면 {staged_files} 의 repo-root 상대경로가 깨진다.
+      # frontend/node_modules/.bin/prettier 를 직접 호출 — repo 루트 기준 경로가 그대로 전달된다.
       run: |
-        if [ -f frontend/package.json ] && [ -d frontend/node_modules ]; then
-          pnpm --dir frontend exec prettier --write {staged_files}
+        if [ -x frontend/node_modules/.bin/prettier ]; then
+          frontend/node_modules/.bin/prettier --write {staged_files}
         else
           echo "lefthook: prettier skipped (frontend not initialized)"
         fi
