@@ -42,3 +42,6 @@ lefthook-local.yml
 .clawhip/
 .openchrome/
 uv.lock
+
+# Makefile runtime state (PID/log files)
+.pids/

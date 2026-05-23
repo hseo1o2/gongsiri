@@ -23,24 +23,24 @@ gongsiri/
 
 ## 사람 담당 (A / B / C)
 
-| 담당 | 영역 | 코드 경로 | 핵심 산출 |
-|------|------|----------|----------|
-| **A** | 수집·정규화 | `backend/collector/` (`dart.py`, `krx/`, `naver/`, `document_parse.py`, `normalize.py`) | `normalized_data_bundle` (A→B 인터페이스, `backend/schemas/bundle.py`) |
-| **B** | 분석·리포트 | `backend/analyzer/` (`checklist.py`, `solar_step1.py`, `solar_step2.py`, `qa.py`) | `analysis_result` (B→C 인터페이스: risk_score/level + 단기·장기 리포트) |
-| **C** | Pi 런타임·오케스트레이션 | `agent/` | Pi SDK HTTP service, manual prompt runtime, skill/tool orchestration, typed Pi envelopes |
+| 담당  | 영역                     | 코드 경로                                                                               | 핵심 산출                                                                                |
+| ----- | ------------------------ | --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| **A** | 수집·정규화              | `backend/collector/` (`dart.py`, `krx/`, `naver/`, `document_parse.py`, `normalize.py`) | `normalized_data_bundle` (A→B 인터페이스, `backend/schemas/bundle.py`)                   |
+| **B** | 분석·리포트              | `backend/analyzer/` (`checklist.py`, `solar_step1.py`, `solar_step2.py`, `qa.py`)       | `analysis_result` (B→C 인터페이스: risk_score/level + 단기·장기 리포트)                  |
+| **C** | Pi 런타임·오케스트레이션 | `agent/`                                                                                | Pi SDK HTTP service, manual prompt runtime, skill/tool orchestration, typed Pi envelopes |
 
 > PR23(`feature/C-pi-agent-demo`) 이후 C의 canonical runtime root는 `agent/`이고, report/QA 데모 경로는 `frontend → backend → agent(Pi SDK)` 순서로 호출된다. cron, DB 히스토리, 인증 고도화는 여전히 out-of-scope다.
 
 ## 작전주 6개 항목 owner 매핑
 
-| # | 항목 | 정량 임계값 (코드) | 정성 해석 (Solar) | 정량 owner | Solar owner |
-|---|------|----------------------|-------------------|-----------|-------------|
-| 1 | 사업목적 변경 | A (DART 정관변경) | B (`solar_step1`) | A | B |
-| 2 | 핫테마 편승 | A (뉴스·사업목적) | B | A | B |
-| 3 | 구조변경 (지배구조·인수) | A (DART 주요사항보고서) | B | A | B |
-| 4 | 비정상 주가급등 | A (`krx/trade_info`) | B | A | B |
-| 5 | CB·감자 이력 | A (DART) | B | A | B |
-| 6 | 실적괴리 | A (DART 재무) | B | A | B |
+| #   | 항목                     | 정량 임계값 (코드)      | 정성 해석 (Solar) | 정량 owner | Solar owner |
+| --- | ------------------------ | ----------------------- | ----------------- | ---------- | ----------- |
+| 1   | 사업목적 변경            | A (DART 정관변경)       | B (`solar_step1`) | A          | B           |
+| 2   | 핫테마 편승              | A (뉴스·사업목적)       | B                 | A          | B           |
+| 3   | 구조변경 (지배구조·인수) | A (DART 주요사항보고서) | B                 | A          | B           |
+| 4   | 비정상 주가급등          | A (`krx/trade_info`)    | B                 | A          | B           |
+| 5   | CB·감자 이력             | A (DART)                | B                 | A          | B           |
+| 6   | 실적괴리                 | A (DART 재무)           | B                 | A          | B           |
 
 - 총점 0–1 정상 → STEP2 진행
 - 총점 2–3 주의 → 배너 + STEP2 진행
@@ -95,7 +95,7 @@ cd frontend && npm run dev -- --hostname 127.0.0.1 --port 3000
 3. **main·dev 직접 push 금지** — Claude PreToolUse hook + lefthook pre-push + GitHub branch protection 3중 차단.
 4. **commit**: `/commit` 스킬 사용 권장. Conventional Commits `<type>(<scope>): <summary>`, 7 types: `feat | fix | docs | chore | refactor | test | style`.
 5. **인터페이스 변경**: A↔B↔C 스키마 수정은 PR + 팀 합의 + `docs/03-interface-schema.md` 갱신 필수.
-6. **환경변수**: 새 키 추가 시 `.env.example` + `docs/04-env-vars.md` 동시 갱신.
+6. **환경변수**: 새 키 추가 시 `.env.example` + `docs/04-env-vars.md` 동시 갱신. 환경변수는 리포 루트의 `.env.example`을 참조한다 (agent 폴더 별도 env 파일 없음).
 7. **언어**: 본문·코멘트·커밋 메시지 한국어 OK, 코드·식별자는 영문.
 8. **lint**: `lefthook install` 한 번으로 자동 활성화. pre-commit이 변경 파일만 검사 (`*.py`→ruff, `*.{js,ts,jsx,tsx}`→eslint).
 
@@ -103,11 +103,11 @@ cd frontend && npm run dev -- --hostname 127.0.0.1 --port 3000
 
 바이브 코딩 시 "기능 구현 폭발"을 막기 위한 SE 컨벤션. 코드 작성 전 필독.
 
-| 파일 | 분과 | 한 줄 요약 |
-|------|------|-----------|
-| [code-style.md](docs/rules/code-style.md) | Code Style / Quality | Modular Code 4규칙(진입점 순수성·잡동사니 파일 금지·단일 책임·200 LOC 상한) + 포맷·네이밍 |
-| [version-control.md](docs/rules/version-control.md) | Version Control | 브랜치·Conventional Commit·"코딩 전 1 PR = 1 concern 분해"·PR 크기 가이드 |
-| [change-management.md](docs/rules/change-management.md) | Change Management | A↔B↔C 인터페이스 변경 절차·CODEOWNERS·자동 라벨·에스컬레이션 |
+| 파일                                                    | 분과                 | 한 줄 요약                                                                                |
+| ------------------------------------------------------- | -------------------- | ----------------------------------------------------------------------------------------- |
+| [code-style.md](docs/rules/code-style.md)               | Code Style / Quality | Modular Code 4규칙(진입점 순수성·잡동사니 파일 금지·단일 책임·200 LOC 상한) + 포맷·네이밍 |
+| [version-control.md](docs/rules/version-control.md)     | Version Control      | 브랜치·Conventional Commit·"코딩 전 1 PR = 1 concern 분해"·PR 크기 가이드                 |
+| [change-management.md](docs/rules/change-management.md) | Change Management    | A↔B↔C 인터페이스 변경 절차·CODEOWNERS·자동 라벨·에스컬레이션                              |
 
 > 규칙 본문은 `docs/rules/`에만 있음 — 여기에 복붙 금지. 이 표는 포인터일 뿐이다.
 > Codex 도 `.codex/hooks.json` SessionStart 훅으로 동일 규칙 요약을 주입받는다 (Claude Code 와 같은 경험).
@@ -127,10 +127,18 @@ cd frontend && npm run dev -- --hostname 127.0.0.1 --port 3000
 ## 빠른 명령
 
 ```bash
+# 3 서비스 한 번에
+make dev      # backend 8000 / frontend 3000 / agent 8787 동시 기동
+make stop     # 깔끔하게 종료
+make status   # health 체크
+```
+
+```bash
 # Pi runtime typecheck
 cd agent && npm run typecheck
 
 # Agent server (after `npm run build -- --watch` in another pane)
+# (pnpm-workspace.yaml의 onlyBuiltDependencies 확정 이후 `pnpm approve-builds` 불필요)
 cd agent && node --watch dist/server.js
 
 # Backend dev (repo root)
