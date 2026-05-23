@@ -1,18 +1,20 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
+from backend.collector.adapters.external_api_common import failure as _failure
+from backend.collector.adapters.external_api_common import is_rate_limited as _is_rate_limited
+
+# parse_research_preview는 routes·tests가 이 모듈 경로로 import하므로 재노출한다.
+from backend.collector.adapters.external_api_parse import (
+    parse_research_preview as parse_research_preview,
+)
 from backend.collector.dart import fetch_disclosures, fetch_financials
 from backend.collector.krx.search import load_stock_master, search_stock
 from backend.collector.krx.trade_info import get_trade_info
 from backend.collector.naver.news import fetch_news_docs
-from backend.collector.adapters.external_api_common import failure as _failure
-from backend.collector.adapters.external_api_common import is_rate_limited as _is_rate_limited
-from backend.collector.adapters.external_api_parse import parse_research_preview
 from backend.schemas.external_api import (
     DartFilingEvidence,
-    ExternalResearchReport,
     FinancialSnapshot,
     NewsArticle,
     StockSearchResult,

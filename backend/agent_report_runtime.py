@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from backend.agent_client import AgentServiceClient, AgentServiceError, resolve_agent_service_url
+from backend.agent_qa_runtime import explain_checklist_with_agent
 from backend.agent_runtime_common import (
     AGENT_SOURCE,
     agent_evidence,
@@ -11,7 +12,6 @@ from backend.agent_runtime_common import (
     merge_checklist_explanations,
     validate_analysis_guard,
 )
-from backend.agent_qa_runtime import explain_checklist_with_agent
 
 
 def extract_report_fields(agent_response: dict[str, Any]) -> dict[str, str]:

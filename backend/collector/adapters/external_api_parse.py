@@ -3,7 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from backend.collector.adapters.external_api_common import failure, is_allowed_research_path, is_rate_limited
+from backend.collector.adapters.external_api_common import (
+    failure,
+    is_allowed_research_path,
+    is_rate_limited,
+)
 from backend.collector.document_parse import parse_local_report_file
 from backend.schemas.external_api import ExternalResearchReport
 
