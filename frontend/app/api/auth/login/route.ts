@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import {
   DEV_SESSION_COOKIE,
+  DEV_SESSION_COOKIE_OPTIONS,
   DEV_SESSION_MAX_AGE_SECONDS,
   getBackendBaseUrl,
 } from '@/lib/auth/dev-session'
@@ -35,9 +36,7 @@ export async function POST(req: NextRequest) {
       response.cookies.set({
         name: DEV_SESSION_COOKIE,
         value: data.token,
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
+        ...DEV_SESSION_COOKIE_OPTIONS,
         maxAge: DEV_SESSION_MAX_AGE_SECONDS,
       })
     }
