@@ -96,9 +96,7 @@ def explain_checklist_with_agent(
         else {}
     )
     items = (
-        checklist_payload.get("items")
-        if isinstance(checklist_payload.get("items"), list)
-        else []
+        checklist_payload.get("items") if isinstance(checklist_payload.get("items"), list) else []
     )
     if not items:
         raise AgentServiceError(

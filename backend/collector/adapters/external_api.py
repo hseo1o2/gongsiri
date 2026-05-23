@@ -172,5 +172,3 @@ def dart_evidence_snapshot(corp_code: str) -> dict[str, Any]:
         message = str(exc)
         code = "rate_limited" if _is_rate_limited(message) else "source_unavailable"
         return _failure("opendart_evidence", code, message)
-
-
