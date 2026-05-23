@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import concurrent.futures
 from datetime import UTC, datetime
 from typing import Any
 
@@ -12,6 +13,7 @@ from backend.auth.dev_session import (
     require_dev_auth_mode,
     resolve_dev_user_id,
 )
+from backend.collector.krx.trade_info import fetch_latest_price
 from backend.http_contracts import read_json_object
 from backend.storage.connection import get_repository_provider
 from backend.storage.schema import SCHEMA_VERSION
@@ -28,13 +30,45 @@ def _latest_reports_by_corp(provider: Any) -> dict[str, dict[str, Any]]:
 
 def _watchlist_views(provider: Any) -> list[dict[str, Any]]:
     reports = _latest_reports_by_corp(provider)
-    return [
-        _watchlist_view(row, reports.get(str(row["corp_code"])))
-        for row in provider.watchlist.list_for_user(resolve_dev_user_id())
-    ]
+    rows = provider.watchlist.list_for_user(resolve_dev_user_id())
+
+    # stock_code/market이 있는 row에 대해 병렬로 현재가 조회
+    price_map: dict[str, tuple[float | None, float | None]] = {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        future_to_corp: dict[concurrent.futures.Future[tuple[float | None, float | None]], str] = {}
+        for row in rows:
+            stock_code = row.get("stock_code") or ""
+            market = row.get("market") or ""
+            corp_code = str(row["corp_code"])
+            if stock_code and market:
+                future = executor.submit(fetch_latest_price, stock_code, market)
+                future_to_corp[future] = corp_code
+            else:
+                price_map[corp_code] = (None, None)
+
+        for future in concurrent.futures.as_completed(future_to_corp, timeout=6):
+            corp_code = future_to_corp[future]
+            try:
+                price_map[corp_code] = future.result()
+            except Exception:
+                price_map[corp_code] = (None, None)
+
+    result = []
+    for row in rows:
+        corp_code = str(row["corp_code"])
+        price, change_rate = price_map.get(corp_code, (None, None))
+        result.append(
+            _watchlist_view(row, reports.get(corp_code), price=price, change_rate=change_rate)
+        )
+    return result
 
 
-def _watchlist_view(row: dict[str, Any], report: dict[str, Any] | None) -> dict[str, Any]:
+def _watchlist_view(
+    row: dict[str, Any],
+    report: dict[str, Any] | None,
+    price: float | None = None,
+    change_rate: float | None = None,
+) -> dict[str, Any]:
     return {
         "corp_code": row["corp_code"],
         "corp_name": row["corp_name"],
@@ -43,6 +77,8 @@ def _watchlist_view(row: dict[str, Any], report: dict[str, Any] | None) -> dict[
         "risk_level": report.get("risk_level", "normal") if report else "normal",
         "risk_score": report.get("risk_score", 0) if report else 0,
         "last_analyzed": report.get("generated_at") if report else row["added_at"],
+        "price": price,
+        "change_rate": change_rate,
     }
 
 

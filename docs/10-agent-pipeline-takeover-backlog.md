@@ -5,6 +5,7 @@
 This artifact captures the deferred work from the approved agent pipeline takeover PRD/test spec so the current implementation slice can stay narrow, reversible, and verifiable.
 
 Source evidence:
+
 - Approved PRD: `/Users/beomsu/Documents/01_Project/Upstage/Upstage ambassador/team project/gongsiri/.omx/plans/prd-agent-pipeline-takeover.md`
 - Approved test spec: `/Users/beomsu/Documents/01_Project/Upstage/Upstage ambassador/team project/gongsiri/.omx/plans/test-spec-agent-pipeline-takeover.md`
 - Tracked artifact location chosen for this repo: `docs/10-agent-pipeline-takeover-backlog.md` because `.omx/` is ignored by `.gitignore` and would not be available for normal code review.
@@ -13,17 +14,18 @@ Source evidence:
 
 - **No frontend UI edits in the takeover slice.** Do not change `frontend/app/**` pages/layouts except `frontend/app/api/**` route handlers when an API-proxy-only compatibility change is explicitly needed. Do not change `frontend/components/**` or frontend CSS for this work.
 - **Respect upstream lock policy.** Do not add a new `pnpm-lock.yaml`, workspace file, or package-manager lock that upstream does not already carry. The frontend currently has `frontend/package-lock.json`; preserve the existing package-manager boundary.
-- **Preserve backend Solar fallback.** Do not delete `backend/analyzer/solar_client.py`, `backend/analyzer/solar_step1.py`, `backend/analyzer/solar_step2.py`, `backend/analyzer/qa.py`, or backend prompt assets until the agent-owned Solar seam is proven and a later migration explicitly approves removal.
+- **Preserve backend Solar fallback.** Do not delete `backend/analyzer/solar_client.py`, `backend/analyzer/solar_step1.py`, `backend/analyzer/qa.py`, or backend prompt assets until the agent-owned Solar seam is proven and a later migration explicitly approves removal. (`solar_step2.py` and `prompts/step2.py` were confirmed dead code with zero callers and have been removed — see §1 below.)
 - **Use existing tools first.** Prefer existing `fetch_disclosures` and `chat_with_solar` seams over introducing new tool names. Legacy agent-side pipeline trigger surfaces are removed.
 - **Keep tests local to the area when feasible.** New agent tests belong under `agent/test/`; new backend tests should prefer `backend/tests/`; broad root-test relocation remains deferred.
 
 ## Deferred Issue Backlog
 
-### 1. Complete backend Solar migration and fallback deletion
+### 1. Complete backend Solar migration and fallback deletion ✅ PARTIAL — solar_step2 removed
 
-- **Why deferred:** The current slice must keep backend analyzer behavior stable while the agent-owned Solar seam is introduced and tested.
-- **Current evidence paths:** `backend/analyzer/solar_step1.py`, `backend/analyzer/solar_step2.py`, `backend/analyzer/qa.py`, `agent/src/tools/chatWithSolar.ts`.
-- **Done when:** STEP1/STEP2/QA prompt construction and Solar calls are owned by agent skill/system-prompt modules, backend analyzer has a documented non-Solar compatibility role or is removed by an approved migration, and fallback deletion is covered by deterministic tests.
+- **Status (2026-05-22):** `backend/analyzer/solar_step2.py` and `backend/analyzer/prompts/step2.py` confirmed dead (zero callers) and deleted. Agent seam verified via 카카오 forceRefresh E2E. Report/QA prose generation is now agent-owned via Pi SDK skills (`agent/.pi/skills/gongsiri-report`, `gongsiri-qa`, `gongsiri-checklist-explanation`).
+- **Remaining:** `backend/analyzer/solar_step1.py` is alive (called by `qa.py:analyze_bundle()` for checklist scoring — not Solar calls, just `build_checklist()`). `backend/analyzer/qa.py` and `backend/analyzer/solar_client.py` remain as backend compatibility layer.
+- **Current evidence paths:** `backend/analyzer/solar_step1.py`, `backend/analyzer/qa.py`, `agent/src/tools/chatWithSolar.ts`, `agent/.pi/skills/`.
+- **Done when:** `solar_step1.py` / `qa.py` are either removed or have a documented non-Solar compatibility role, and fallback deletion is covered by deterministic tests.
 
 ### 2. Productize `/qa` through the disclosure expert agent
 

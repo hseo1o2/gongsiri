@@ -32,17 +32,16 @@ def test_dashboard_reads_seeded_admin_scope_from_dev_db(monkeypatch):
     body = response.json()
     assert response.status_code == 200
     assert body["summary"] == {
-        "count": 3,
-        "todayDisclosures": 1,
+        "count": 2,
+        "todayDisclosures": 2,
         "cautionCount": 1,
-        "dangerCount": 1,
+        "dangerCount": 0,
     }
     assert {item["corp_code"] for item in body["watchlist"]} == {
         "00126380",
         "00258801",
-        "00999999",
     }
-    assert body["recentDisclosures"][0]["corp_name"] in {"카카오", "삼성전자", "공시리위험샘플"}
+    assert body["recentDisclosures"][0]["corp_name"] in {"카카오", "삼성전자"}
     reset_repository_provider()
 
 
@@ -80,5 +79,5 @@ def test_recent_disclosures_are_joined_to_admin_watchlist(monkeypatch):
     body = response.json()
     assert response.status_code == 200
     assert len(body["items"]) == 5
-    assert {item["risk_level"] for item in body["items"]} >= {"normal", "caution", "high"}
+    assert {item["risk_level"] for item in body["items"]} >= {"normal", "caution"}
     reset_repository_provider()

@@ -1,9 +1,27 @@
 ---
 title: "gongsiri 에이전트 아키텍처"
-tags: ["gongsiri", "agent", "architecture", "pi-agent", "frontend", "backend", "layer", "pi-sdk", "http", "layered"]
+tags:
+  [
+    "gongsiri",
+    "agent",
+    "architecture",
+    "pi-agent",
+    "frontend",
+    "backend",
+    "layer",
+    "pi-sdk",
+    "http",
+    "layered",
+  ]
 created: 2026-05-21T06:10:55.215Z
 updated: 2026-05-21T13:22:08.019Z
-sources: ["assets/공시리 기획서.pdf §4·§8", "AGENTS.md R&R", "docs/05~07", "agent/src/*"]
+sources:
+  [
+    "assets/공시리 기획서.pdf §4·§8",
+    "AGENTS.md R&R",
+    "docs/05~07",
+    "agent/src/*",
+  ]
 links: ["tool-vs-skill.md", "gongsiri-8.md", "gongsiri-http-pi-sdk.md"]
 category: architecture
 confidence: high
@@ -20,11 +38,12 @@ schemaVersion: 1
 - **B** = 분석·**리포트** (`backend/analyzer/`) → `analysis_result` (단기/장기 리포트 본문, 6항목 체크리스트)
 - **C** = Pi 런타임·**오케스트레이션** (`agent/`) → manual prompt runtime, skill/tool orchestration, typed envelope
 
-주의: **리포트 본문 생성은 B(analyzer)의 일**. agent(C)는 리포트를 *쓰는* 게 아니라 *생성을 트리거·오케스트레이션*함.
+주의: **리포트 본문 산문 생성은 C(agent)의 일** (2026-05-22 결정 반영). B(analyzer)는 정량 채점(6항목 체크리스트, risk_score/level)만 담당. agent가 Pi SDK skill(`gongsiri-report`, `gongsiri-qa`, `gongsiri-checklist-explanation`)로 Solar 추론·리포트 서술·QA 답변을 생성. `solar_step2.py` 제거됨.
 
 ## 기획서 기준 agent = 레이어 2 "에이전트 코어"
 
 기획서 §4 5개 레이어 중 agent 몫:
+
 1. **스케줄러** — 30분 주기 신규 공시 폴링
 2. **수동 트리거** — "지금 공시 체크" 버튼
 3. **기억 저장소** — 분석 이력 보존 → 변화 패턴 감지
@@ -68,7 +87,7 @@ schemaVersion: 1
 - 에이전트 런타임 = 별도 상시 Node HTTP 서비스, 실제 Pi SDK(`@earendil-works/pi-coding-agent`)
   사용. 기존 `agent/`는 이름만 Pi였고 SDK 의존성 0건이었음 → SDK 기반으로 재구성.
 - 에이전트는 leaf — 백엔드·운영 DB 역호출 금지. `runAnalysisPipelineTool →
-  /pipeline/trigger` 순환 제거.
+/pipeline/trigger` 순환 제거.
 - Option A: 백엔드가 수집·6항목 채점, 에이전트는 Solar 추론·리포트 서술/QA 생성.
 - 단, "리포트 본문 생성은 B(analyzer)의 일" 원칙은 정량 채점에 한정 — 정성 서술·
   QA 답변은 에이전트(C)가 Solar로 생성.

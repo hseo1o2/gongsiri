@@ -17,6 +17,8 @@ coverage/
 .env
 .env.local
 .env.*.local
+.env.zip
+*.env.zip
 
 # Editors / OS
 .vscode/

@@ -163,31 +163,38 @@ def fetch_financials(
             market_cap=None,
         )
 
-    revenue = None
-    operating_income = None
-    equity = None
+    # CFS(연결재무제표) 우선, 없으면 OFS(개별재무제표) 사용
+    # key: account_nm → {"CFS": amount, "OFS": amount}
+    candidates: dict[str, dict[str, float]] = {}
 
     for item in data.get("list", []):
         account_nm = item.get("account_nm", "")
+        fs_div = item.get("fs_div", "")
         amount_raw = item.get("thstrm_amount", "")
+
+        if account_nm not in ("매출액", "영업이익", "자본총계"):
+            continue
 
         try:
             amount = float(amount_raw.replace(",", ""))
-        except ValueError:
+        except (ValueError, AttributeError):
             continue
 
-        if account_nm == "매출액":
-            revenue = amount
+        if account_nm not in candidates:
+            candidates[account_nm] = {}
+        candidates[account_nm][fs_div] = amount
 
-        elif account_nm == "영업이익":
-            operating_income = amount
-
-        elif account_nm == "자본총계":
-            equity = amount
+    def pick(account_nm: str) -> float | None:
+        row = candidates.get(account_nm, {})
+        if "CFS" in row:
+            return row["CFS"]
+        if "OFS" in row:
+            return row["OFS"]
+        return None
 
     return FinancialData(
-        revenue=revenue,
-        operating_income=operating_income,
-        equity=equity,
+        revenue=pick("매출액"),
+        operating_income=pick("영업이익"),
+        equity=pick("자본총계"),
         market_cap=None,
     )

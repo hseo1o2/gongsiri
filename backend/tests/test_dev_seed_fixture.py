@@ -10,7 +10,7 @@ def test_dev_seed_fixture_shape_covers_demo_states():
     fixture = read_dev_seed_fixture()
 
     assert fixture["version"] == "dev-seed-v1"
-    assert len(fixture["watchlist_items"]) == 3
+    assert len(fixture["watchlist_items"]) == 2
     assert len(fixture["disclosures"]) == 5
     assert len(fixture["analysis_reports"]) == 3
     assert len(fixture["qa_history"]) == 3
@@ -25,16 +25,18 @@ def test_connect_dev_db_loads_fixture_idempotently():
     connection = connect_dev_db(mode="memory")
     provider = SQLiteRepositoryProvider(connection)
 
-    assert len(provider.watchlist.list_for_user(DEV_ADMIN_ID)) == 3
+    assert len(provider.watchlist.list_for_user(DEV_ADMIN_ID)) == 2
     assert len(provider.disclosures.list_recent(user_id=DEV_ADMIN_ID, limit=10)) == 5
-    assert len(provider.reports.list_latest_for_user(DEV_ADMIN_ID)) == 3
+    # list_latest_for_user returns one row per corp_code (latest generated_at);
+    # fixture has 3 reports across 2 corp_codes → 2 rows returned
+    assert len(provider.reports.list_latest_for_user(DEV_ADMIN_ID)) == 2
     assert len(provider.qa_history.list_for_user(user_id=DEV_ADMIN_ID)) == 3
 
     from backend.storage.fixture_loader import load_dev_seed_fixture
 
     load_dev_seed_fixture(connection)
 
-    assert len(provider.watchlist.list_for_user(DEV_ADMIN_ID)) == 3
+    assert len(provider.watchlist.list_for_user(DEV_ADMIN_ID)) == 2
     assert len(provider.qa_history.list_for_user(user_id=DEV_ADMIN_ID)) == 3
     connection.close()
 

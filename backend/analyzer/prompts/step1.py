@@ -38,6 +38,12 @@ def build_messages(
         for item in checklist_summary
     )
 
+    def _fmt_krw(value: float | None, label: str) -> str:
+        if value is None:
+            return "데이터 없음"
+        억 = value / 1e8
+        return f"{억:,.1f}억원"
+
     user_content = f"""종목명: {corp_name}
 
 === 공시 목록 ===
@@ -46,10 +52,10 @@ def build_messages(
 === 뉴스/리포트 제목 ===
 {news_block}
 
-=== 재무 현황 ===
-매출: {financials.get("revenue", "데이터 없음")}
-영업이익: {financials.get("operating_income", "데이터 없음")}
-자기자본: {financials.get("equity", "데이터 없음")}
+=== 재무 현황 (단위: 억원, 출처: OpenDART 연결재무제표 기준) ===
+매출: {_fmt_krw(financials.get("revenue"), "매출")}
+영업이익: {_fmt_krw(financials.get("operating_income"), "영업이익")}
+자기자본: {_fmt_krw(financials.get("equity"), "자기자본")}
 
 === 시세 신호 ===
 월간 최대 수익률: {price_signals.get("monthly_return_max", "데이터 없음")}%

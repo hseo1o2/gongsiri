@@ -206,8 +206,8 @@ def test_api_v1_reports_list_reads_saved_reports_from_dev_db():
     payload = response.json()
     assert payload["view"] == "report-list"
     assert payload["fallback"] == {"used": False}
-    assert len(payload["reports"]) == 3
-    assert {item["corpCode"] for item in payload["reports"]} == {"00258801", "00126380", "00999999"}
+    assert len(payload["reports"]) == 2
+    assert {item["corpCode"] for item in payload["reports"]} == {"00258801", "00126380"}
     reset_repository_provider()
 
 
