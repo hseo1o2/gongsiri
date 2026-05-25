@@ -6,7 +6,7 @@ export const FETCH_DISCLOSURES_TOOL_NAME = "fetch_disclosures";
 export type ToolDescriptor = {
   name: typeof FETCH_DISCLOSURES_TOOL_NAME;
   description: string;
-  canonicalCommand: "python -m backend.collector.cli.fetch_disclosures";
+  canonicalCommand: "POST /internal/disclosures";
 };
 
 export type ToolDefinition = {
@@ -16,6 +16,7 @@ export type ToolDefinition = {
 
 export const fetchDisclosuresToolDescriptor: ToolDescriptor = {
   name: FETCH_DISCLOSURES_TOOL_NAME,
-  description: "Read-only disclosure fetch bridge for the Pi bootstrap milestone.",
-  canonicalCommand: "python -m backend.collector.cli.fetch_disclosures"
+  description:
+    "Read-only disclosure fetch bridge backed by backend /internal/disclosures.",
+  canonicalCommand: "POST /internal/disclosures",
 };

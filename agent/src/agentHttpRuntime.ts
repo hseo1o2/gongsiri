@@ -1,4 +1,6 @@
 import { createServer } from "node:http";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { loadLocalEnvFiles } from "./env/loadLocalEnv.js";
 import type {
   AgentHealthResponse,
@@ -22,12 +24,18 @@ import {
   traceId,
   validate,
 } from "./agentHttpCore.js";
+import { createDisclosureScheduler } from "./scheduler/disclosureScheduler.js";
+import { runDisclosureMonitoring } from "./triggers/runDisclosureMonitoring.js";
 
 loadLocalEnvFiles();
 
-const HOST = process.env.GONGSIRI_AGENT_HOST ?? process.env.AGENT_HTTP_HOST ?? "127.0.0.1";
+const HOST =
+  process.env.GONGSIRI_AGENT_HOST ?? process.env.AGENT_HTTP_HOST ?? "127.0.0.1";
 const PORT = Number(
-  process.env.GONGSIRI_AGENT_PORT ?? process.env.AGENT_HTTP_PORT ?? process.env.PORT ?? "8787"
+  process.env.GONGSIRI_AGENT_PORT ??
+    process.env.AGENT_HTTP_PORT ??
+    process.env.PORT ??
+    "8787",
 );
 
 const failure = (
@@ -38,7 +46,7 @@ const failure = (
       ? C
       : never
     : never,
-  message: string
+  message: string,
 ): AgentServiceResponse => ({
   ok: false,
   mode,
@@ -49,19 +57,29 @@ const failure = (
   text: "",
   warnings: [],
   error: { code, message },
-  evidence: evidenceFrom(request)
+  evidence: evidenceFrom(request),
 });
 
 const successEvidence = (
   request: AgentServiceRequest,
   mode: AgentServiceMode,
-  model: string
+  model: string,
 ): AgentServiceEvidence[] => [
   ...evidenceFrom(request),
-  { source: "pi_sdk_agent_service", mode, strictPiSdk: true, noTools: "all", model }
+  {
+    source: "pi_sdk_agent_service",
+    mode,
+    strictPiSdk: true,
+    noTools: "all",
+    model,
+  },
 ];
 
-const handleAgent = async (mode: AgentServiceMode, req: Incoming, res: ResponseLike): Promise<void> => {
+const handleAgent = async (
+  mode: AgentServiceMode,
+  req: Incoming,
+  res: ResponseLike,
+): Promise<void> => {
   let request: AgentServiceRequest | undefined;
   try {
     const rawBody = await readBody(req);
@@ -78,10 +96,13 @@ const handleAgent = async (mode: AgentServiceMode, req: Incoming, res: ResponseL
       text: parsed.markdown,
       warnings: parsed.warnings,
       data: parsed.data,
-      evidence: successEvidence(request, mode, result.model)
+      evidence: successEvidence(request, mode, result.model),
     } satisfies AgentServiceResponse);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "저 공시리가 요청을 완료하지 못했습니다.";
+    const message =
+      error instanceof Error
+        ? error.message
+        : "저 공시리가 요청을 완료하지 못했습니다.";
     const code =
       error instanceof AgentRequestValidationError
         ? "invalid_request"
@@ -92,7 +113,11 @@ const handleAgent = async (mode: AgentServiceMode, req: Incoming, res: ResponseL
             : request
               ? "pi_agent_error"
               : "invalid_request";
-    json(res, code === "invalid_request" ? 400 : 500, failure(request, mode, code, message));
+    json(
+      res,
+      code === "invalid_request" ? 400 : 500,
+      failure(request, mode, code, message),
+    );
   }
 };
 
@@ -106,13 +131,15 @@ export const createAgentHttpServer = () =>
         ok: true,
         service: "gongsiri-pi-agent",
         contractVersion: contractVersion(),
-        observedAt: nowIso()
+        observedAt: nowIso(),
       } satisfies AgentHealthResponse);
       return;
     }
 
     if (
-      (path === "/report" || path === "/qa" || path === "/checklist-explanation") &&
+      (path === "/report" ||
+        path === "/qa" ||
+        path === "/checklist-explanation") &&
       req.method !== "POST"
     ) {
       const mode =
@@ -124,7 +151,12 @@ export const createAgentHttpServer = () =>
       json(
         res,
         405,
-        failure(undefined, mode, "method_not_allowed", `저 공시리가 ${path}는 POST 요청만 받을 수 있습니다.`)
+        failure(
+          undefined,
+          mode,
+          "method_not_allowed",
+          `저 공시리가 ${path}는 POST 요청만 받을 수 있습니다.`,
+        ),
       );
       return;
     }
@@ -142,11 +174,67 @@ export const createAgentHttpServer = () =>
       return;
     }
 
-    json(res, 404, failure(undefined, "report", "not_found", "저 공시리가 찾을 수 없는 경로입니다."));
+    json(
+      res,
+      404,
+      failure(
+        undefined,
+        "report",
+        "not_found",
+        "저 공시리가 찾을 수 없는 경로입니다.",
+      ),
+    );
   });
+
+const STOCK_MASTER_PATH = fileURLToPath(
+  new URL("../../assets/stock_master.json", import.meta.url),
+);
+
+type StockMasterEntry = {
+  corp_name: string;
+  stock_code: string;
+  corp_code: string;
+  market: string;
+};
+
+const loadStockMaster = (): Record<string, StockMasterEntry> => {
+  try {
+    const raw = readFileSync(STOCK_MASTER_PATH, "utf-8");
+    return JSON.parse(raw) as Record<string, StockMasterEntry>;
+  } catch {
+    return {};
+  }
+};
 
 export const startAgentHttpServer = (): void => {
   const server = createAgentHttpServer();
+
+  const startedSchedulers: Array<{ stop(): void }> = [];
+
+  if (process.env.GONGSIRI_CRON_ENABLED !== "false") {
+    const master = loadStockMaster();
+    const entries = Object.entries(master);
+    for (const [keyword, entry] of entries) {
+      const scheduler = createDisclosureScheduler({
+        run: runDisclosureMonitoring,
+      });
+      const started = scheduler.start({
+        keyword,
+        corpCode: entry.corp_code,
+      });
+      startedSchedulers.push(started);
+    }
+    if (entries.length > 0) {
+      console.log(
+        `[scheduler] started for ${entries.length} keywords (interval=${process.env.GONGSIRI_SCHEDULER_INTERVAL_MINUTES ?? "30"}m)`,
+      );
+    }
+  }
+
+  process.on("SIGTERM", () => {
+    startedSchedulers.forEach((s) => s.stop());
+  });
+
   server.listen(PORT, HOST, () => {
     console.log(`공시리 Pi agent service listening on http://${HOST}:${PORT}`);
   });

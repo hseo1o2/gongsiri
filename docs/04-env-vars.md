@@ -21,6 +21,8 @@ PR1에서 Pi runtime과 Python collector bridge가 기대하는 환경변수를 
 - `GONGSIRI_DB_MODE` — dev DB mode for local persistence; `memory` default, optional `file` for ignored `data/` persistence
 - `GONGSIRI_DB_PATH` — optional SQLite file path when `GONGSIRI_DB_MODE=file`; default `data/dev.sqlite`
 - `GONGSIRI_AUTH_MODE` — optional dev auth gate; only exact `dev` enables `admin/admin` demo login. If unset, dev auth is disabled.
+- `GONGSIRI_CRON_ENABLED` — optional cron scheduler enable flag; default `true` (set to `"false"` to disable in CI/test environments)
+- `AGENT_BACKEND_URL` — optional backend base URL for cron-originated report push; default `http://127.0.0.1:8000`
 - `NEXT_PUBLIC_API_BASE_URL` — optional frontend/runtime HTTP base URL for typed API clients (default `http://localhost:8000`)
 
 ### Python collector side
@@ -121,5 +123,7 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
   - `GONGSIRI_CONTRACT_VERSION`
   - `GONGSIRI_SCHEDULER_INTERVAL_MINUTES`
   - `GONGSIRI_CHECKPOINT_PATH`
+  - `GONGSIRI_CRON_ENABLED` — set to `"false"` in CI; default `true` in production
+  - `AGENT_BACKEND_URL` — backend service URL for cron-originated `POST /api/v1/reports`
 
 Railway provides `PORT`; the agent maps that automatically when `GONGSIRI_AGENT_PORT` is unset.

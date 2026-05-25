@@ -52,4 +52,6 @@ def test_analyze_bundle_returns_deterministic_facts_without_final_prose_dependen
     assert result.short_term_report == ""
     assert result.long_term_report == ""
     assert result.disclaimer == ""
-    assert all(item.solar_explanation == item.reason for item in result.checklist)
+    # solar_explanation 는 attach_agent_report 단계에서 agent skill 결과로 채워진다.
+    # run_step1 자체는 빈 문자열을 반환.
+    assert all(item.solar_explanation == "" for item in result.checklist)

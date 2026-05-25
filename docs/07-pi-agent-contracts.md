@@ -1,9 +1,11 @@
 # 07. Pi Agent Contracts — PR1
 
 ## Purpose
+
 Pi runtime envelope 계약을 문서화해서 future TypeScript runtime implementation이 Python truth와 충돌하지 않게 한다.
 
 ## Tool Request Contract
+
 Tool name: `fetch_disclosures`
 
 Accepted request:
@@ -25,11 +27,13 @@ type FetchDisclosuresRequest =
 ```
 
 Rules:
+
 - `corpCode` wins when both inputs are present
 - at least one of `keyword` or `corpCode` must be present
 - runtime contract version for PR1 is `v1`
 
 ## Tool Result Contract
+
 ```ts
 type ToolResultSuccess = {
   ok: true;
@@ -76,29 +80,41 @@ type ToolResultFailure = {
 ```
 
 ## Agent-Level Expectations
+
 - `PiDisclosureAgent` selects `disclosure-intake-skill` for disclosure-oriented prompts.
 - `disclosure-intake-skill` delegates to `fetch_disclosures`.
 - agent response must preserve `traceId`, `contractVersion`, and tool evidence.
 
 ## Bridge Invocation Contract
-Canonical command:
 
-```bash
-python -m backend.collector.cli.fetch_disclosures
+> 2026-05-25 갱신: agent → backend subprocess(`execFile python3 -m backend.*`) 호출이 **HTTP internal endpoint**로 일원화되었다. 이 결정은 `docs/06-pi-agent-architecture.md` Architecture Decision (2026-05-21) 의 구현이며, A↔B↔C 인터페이스 변경에 해당한다.
+
+Canonical invocation:
+
+```
+POST {AGENT_BACKEND_URL}/internal/disclosures
+content-type: application/json
+
+<FetchDisclosuresRequest JSON body, with traceId/contractVersion injected by the agent>
 ```
 
 Rules:
-- stdout emits JSON only
-- stderr is diagnostic only
-- nonzero exit with **no valid ToolResult JSON** must map to `bridge_process_failed` in the TS runner layer
-- nonzero exit with a valid typed failure envelope may pass through intact
-- malformed stdout JSON must map to `bridge_malformed_output`
+
+- backend route는 `backend/routes/disclosure_routes.py` (`APIRouter(tags=["internal"])`, `@router.post("/internal/disclosures")`) 로 노출되며, `backend/main.py` 의 `include_router(disclosure_router)` 로 마운트된다.
+- request body schema 는 기존 `FetchDisclosuresRequest` 와 1:1 — `keyword` 또는 `corpCode` 중 하나 필수, `bgnDe`/`endDe`/`pageCount` 선택, `traceId`/`contractVersion` 은 agent가 주입.
+- response body 는 `ToolResult` envelope (`ok`/`traceId`/`contractVersion`/`observedAt`/`data | error`/`evidence`) — 기존 subprocess stdout JSON 그대로다.
+- backend 는 envelope-driven status 를 사용한다: `ok:true` → 200, `invalid_request`/`corp_code_unresolved` → 400, `missing_env` → 503, 그 외 → 500. agent fetch 레이어는 status 와 무관하게 body 를 ToolResult 로 파싱한다.
+- network/timeout/connect 실패 → `bridge_process_failed`. JSON 파싱 실패 또는 envelope contract 미충족 → `bridge_malformed_output`. agent fetch 호출은 30 초 `AbortController` 타임아웃을 적용한다.
+- `/internal/*` 는 외부 노출 금지 — Compose internal network / Railway internal-only 토폴로지에서 동작한다. MVP 단계에서 인증/토큰은 도입하지 않는다.
+- backend URL 은 `AGENT_BACKEND_URL` 환경변수로 해석한다 (default `http://127.0.0.1:8000`). 신조어 금지.
 
 ## Side-Effect Rule
+
 - `assets/stock_master.json` is read-only for Pi runtime execution.
 - PR1 runtime paths must use read-only company resolution and must not call `save_company_to_master()` while serving a tool request.
 
 ## G002 Trigger Contract
+
 Trigger source is extended to:
 
 ```ts
@@ -138,6 +154,7 @@ type TriggeredDisclosureResult = {
 ```
 
 Rules:
+
 - successful runs may update ignored local checkpoint state
 - failed runs must not advance the checkpoint
 - first successful run initializes checkpoint state without counting all existing disclosures as new
@@ -148,51 +165,12 @@ The former agent-side `run_analysis_pipeline` tool/CLI surface is removed. Pipel
 
 ## Solar Chat Contract
 
-Tool name: `chat_with_solar`
-
-Accepted request:
-
-```ts
-type SolarChatRequest = {
-  prompt: string;
-  systemPrompt?: string;
-  traceId?: string;
-  contractVersion?: "v1";
-};
-```
-
-Returned envelope:
-
-```ts
-type SolarChatResult =
-  | {
-      ok: true;
-      traceId: string;
-      contractVersion: "v1";
-      observedAt: string;
-      model: string;
-      text: string;
-    }
-  | {
-      ok: false;
-      traceId: string;
-      contractVersion: "v1";
-      observedAt: string;
-      error: {
-        code: "missing_env" | "solar_api_error" | "solar_malformed_output";
-        message: string;
-      };
-    };
-```
-
-Rules:
-- `UPSTAGE_API_KEY` must come from env, never tracked files
-- the runtime may default `UPSTAGE_MODEL` to `solar-pro3`
-- stdout remains JSON-only and safe to use as PR evidence
+> 2026-05-25 제거됨: 별도 `chat_with_solar` tool / `disclosure-expert-skill` / `runSolarChat` CLI 는 production QA/report 경로에 도달하지 않는 dead code 였다. Solar 호출 단일 진입점은 `agent/src/pi/piSession.ts (runPiSolarChat)` → Pi SDK → Upstage 이며, 본 문서의 "Demo Pi SDK HTTP Service Contract" 가 SoT 다. JSON-mode 결정론적 호출이 필요해질 경우 `backend/analyzer/solar_client.py:chat_json()` 또는 `runPiSolarChat` 에 JSON 옵션 추가 경로를 사용한다.
 
 ## Demo Pi SDK HTTP Service Contract
 
 Implementation surface:
+
 - Node package: `agent/`
 - Runtime entrypoint: `agent/src/server.ts`
 - Pi SDK runner: `agent/src/pi/piSession.ts`
@@ -200,6 +178,7 @@ Implementation surface:
 - Backend merge helpers: `backend/agent_service.py`
 
 Local service:
+
 - `GET /health`
 - `POST /report`
 - `POST /qa`
@@ -294,6 +273,7 @@ type AgentServiceResponse =
 ```
 
 Rules:
+
 - `POST /report`, `POST /qa`, and `POST /checklist-explanation` must use the Pi SDK (`createAgentSession`) with Upstage configured as an OpenAI-compatible provider.
 - Strict Pi SDK-first: backend must not fall back to legacy Solar-only QA/report generation when the agent service fails.
 - The agent service is leaf-only: it must not call backend HTTP endpoints or mutate DB/report history.

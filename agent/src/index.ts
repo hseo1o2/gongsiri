@@ -1,14 +1,13 @@
 import { PiDisclosureAgent } from "./agents/PiDisclosureAgent.js";
 import type { PromptRequest } from "./contracts/request.js";
 import type { ToolDefinition } from "./contracts/tool.js";
-import { solarChatTool } from "./tools/chatWithSolar.js";
 import { normalizeManualPrompt } from "./prompt/manualPrompt.js";
 import { createDisclosureScheduler } from "./scheduler/disclosureScheduler.js";
 import { createSessionContext } from "./session/session.js";
 import { fetchDisclosuresTool } from "./tools/fetchDisclosures.js";
 import {
   createDisclosureTriggerRequest,
-  runTriggeredDisclosureCheck
+  runTriggeredDisclosureCheck,
 } from "./triggers/disclosureTrigger.js";
 
 export type RuntimeSkeleton = {
@@ -19,7 +18,7 @@ export type RuntimeSkeleton = {
 
 export const createRuntimeSkeleton = (
   prompt: PromptRequest = normalizeManualPrompt("삼성전자 공시 조회"),
-  tool: ToolDefinition = fetchDisclosuresTool
+  tool: ToolDefinition = fetchDisclosuresTool,
 ): RuntimeSkeleton => {
   const traceId = prompt.traceId ?? "pi-bootstrap-trace";
   const contractVersion = prompt.contractVersion ?? "v1";
@@ -28,7 +27,7 @@ export const createRuntimeSkeleton = (
   return {
     entry: "agent/src/index.ts",
     session,
-    agent: new PiDisclosureAgent(tool)
+    agent: new PiDisclosureAgent(tool),
   };
 };
 
@@ -38,16 +37,16 @@ export const runManualPrompt = async (
     traceId?: string;
     contractVersion?: "v1";
     tool?: ToolDefinition;
-  } = {}
+  } = {},
 ) => {
   const prompt = normalizeManualPrompt(text);
   const runtime = createRuntimeSkeleton(
     {
       ...prompt,
       traceId: options.traceId ?? `manual-${Date.now()}`,
-      contractVersion: options.contractVersion ?? "v1"
+      contractVersion: options.contractVersion ?? "v1",
     },
-    options.tool ?? fetchDisclosuresTool
+    options.tool ?? fetchDisclosuresTool,
   );
 
   if (!runtime.agent.canHandle(prompt)) {
@@ -57,11 +56,19 @@ export const runManualPrompt = async (
   return runtime.agent.run({
     ...prompt,
     traceId: runtime.session.traceId,
-    contractVersion: runtime.session.contractVersion
+    contractVersion: runtime.session.contractVersion,
   });
 };
 
-export { createDisclosureScheduler, createDisclosureTriggerRequest, runTriggeredDisclosureCheck };
-export { solarChatTool };
-export type { AgentHealthResponse, AgentQaRequest, AgentReportRequest, AgentServiceResponse } from "./contracts/agentService.js";
+export {
+  createDisclosureScheduler,
+  createDisclosureTriggerRequest,
+  runTriggeredDisclosureCheck,
+};
+export type {
+  AgentHealthResponse,
+  AgentQaRequest,
+  AgentReportRequest,
+  AgentServiceResponse,
+} from "./contracts/agentService.js";
 export { createAgentHttpServer, startAgentHttpServer } from "./server.js";

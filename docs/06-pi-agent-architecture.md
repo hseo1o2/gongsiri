@@ -1,13 +1,17 @@
 # 06. Pi Agent Architecture — PR1
 
 ## Architecture Summary
+
 PR1 uses a thin Pi → Python subprocess architecture. Pi owns orchestration; Python owns disclosure-domain execution.
 
 ## Component View
+
 ### Pi runtime layer
+
 Planned home: `agent/`
 
 Responsibilities:
+
 - session lifecycle
 - prompt intake
 - skill selection
@@ -15,12 +19,15 @@ Responsibilities:
 - runtime request/response envelopes
 
 ### Python bridge layer
+
 Current files:
+
 - `backend/collector/bridge/disclosures.py`
 - `backend/collector/cli/fetch_disclosures.py`
 - `backend/collector/company_resolver.py`
 
 Responsibilities:
+
 - validate request shape
 - resolve corp code in read-only mode when needed
 - call authoritative DART collector
@@ -28,17 +35,21 @@ Responsibilities:
 - emit JSON envelope on stdout
 
 ### Domain execution layer
+
 Current files:
+
 - `backend/collector/dart.py`
 - `backend/collector/krx/search.py`
 - other `backend/collector/*` modules
 
 Responsibilities:
+
 - collect disclosure/news/market/doc data
 - maintain domain-specific logic
 - remain the source of truth for disclosure fetch behavior
 
 ## Sequence
+
 1. Pi receives prompt.
 2. Agent chooses `disclosure-intake-skill`.
 3. Skill invokes `fetch_disclosures`.
@@ -49,6 +60,7 @@ Responsibilities:
 8. Pi packages the result into an `AgentResponse`.
 
 ## Constraints
+
 - ~~no HTTP delegation in PR1~~ — **superseded by the HTTP + Pi SDK Architecture Decision below (2026-05-21)**
 - no tracked asset mutation during runtime fetch
 - ~~`backend/main.py` remains passive and separate from Pi hosting~~ — **superseded**: backend now actively orchestrates the agent from its service layer
@@ -57,12 +69,14 @@ Responsibilities:
 ## G002 Trigger Architecture Addendum
 
 ### New runtime components
+
 - `agent/src/triggers/` — typed trigger normalization and checkpoint-aware execution
 - `agent/src/state/` — ignored local checkpoint store for last-seen disclosure IDs
 - `agent/src/scheduler/` — cron-oriented orchestration surface that delegates to the same trigger runtime
 - `agent/src/cli/` — one-off/manual trigger entrypoint
 
 ### G002 rules
+
 - checkpoint identity is canonicalized to resolved `corpCode`
 - failed runs do not advance checkpoint state
 - cron/manual/system triggers all reuse the same Python bridge path
@@ -71,14 +85,17 @@ Responsibilities:
 ## G003 Pipeline Architecture Addendum
 
 ### New Python components
+
 - `backend/collector/runtime_normalize.py` — Pi-safe read-only/additive normalization adapter
 - `backend/analyzer/` — deterministic checklist/report orchestration
 - `backend/analyzer/cli/run_pipeline.py` — canonical Python pipeline entrypoint
 
 ### New runtime components
+
 - `agent/src/contracts/pipeline.ts` — historical pipeline contract types retained only for compatibility review
 
 ### G003 rules
+
 - pipeline normalization must not persist new symbols to `assets/stock_master.json`
 - pipeline normalization must not delete local report files
 - analyzer core should stay deterministic first, with any narrative/LLM boundary clearly isolated
@@ -87,10 +104,12 @@ Responsibilities:
 ## Solar Chat Verification Addendum
 
 ### Runtime surface
+
 - `agent/src/tools/chatWithSolar.ts`
 - `agent/src/cli/runSolarChat.ts`
 
 ### Role
+
 - provide one live Upstage Solar-backed Pi runtime communication path for operator/runtime verification
 - keep API-key use in env only
 - return a typed machine-readable chat envelope
@@ -110,7 +129,7 @@ paths to the agent. Status: **implemented for demo, still requires team review b
    Pi SDK (`@earendil-works/pi-coding-agent`). The existing `agent/` package is
    now the demo runtime (`npm run serve`) instead of a Pi-named skeleton.
 3. **The backend service layer calls the agent over internal HTTP.** The agent sits
-   *below* the controller, invoked by the service/application layer — not in front of
+   _below_ the controller, invoked by the service/application layer — not in front of
    the backend.
 4. **The agent is a leaf.** It must never call backend HTTP endpoints and never touch
    the production DB. It returns drafts/explanations only. This removes the
@@ -133,7 +152,8 @@ Frontend ──HTTP──> Backend (FastAPI)
 ```
 
 Rules: `frontend → backend` allowed; `backend → agent` allowed;
-`agent → backend` forbidden; `agent → production DB` forbidden.
+`agent → backend` forbidden **단, cron 발원 `POST /api/v1/reports` 한 경로만 예외** (agent 자체 스케줄러가 분석 결과를 backend에 push하는 단방향 write-only 호출);
+`agent → production DB` forbidden.
 
 ### Pi SDK integration
 
@@ -142,7 +162,7 @@ Rules: `frontend → backend` allowed; `backend → agent` allowed;
   provider registered by `agent/src/pi/piSession.ts` — default
   `baseUrl: "https://api.upstage.ai/v1"`, `api: "openai-completions"`, model id
   `solar-pro3`, and runtime API key from `UPSTAGE_API_KEY`.
-- Pi SDK is a *coding* agent; for the bundle→report / QA task it runs with
+- Pi SDK is a _coding_ agent; for the bundle→report / QA task it runs with
   `noTools: "all"` and backend-provided JSON context only. The SDK is adopted now as the agent
   substrate even though report+QA are single-call tasks, because genuine multi-step
   autonomy (Option B / §8 self-driving loop) is the intended next milestone.
@@ -176,7 +196,22 @@ Rules: `frontend → backend` allowed; `backend → agent` allowed;
   `backend/analyzer/qa.py` as fallback.
 - All user-facing report/QA/error copy should speak as first-person `공시리`.
 
-
 ## G010 Narrative Migration Note
 
 As of G010, backend analyzer ownership is narrowed to deterministic scoring, evidence mapping, and preparation DTOs. Report narrative, Q&A prose, and checklist explanation prose belong to the 공시리 agent modes (`report`, `qa`, `checklist_explanation`) over normalized backend facts. Legacy `backend/analyzer/solar_step*.py` prompt modules are retained only as historical/compatibility artifacts until later cleanup removes them entirely.
+
+## G010 Cleanup Record
+
+`backend/analyzer/solar_step1.py` 의 `chat_json` LLM 호출 및 `_enrich_with_explanations`
+가 제거됨 (브랜치 `feature/C-step1-explanation-takeover`, 2026-05-25). 동시에
+`backend/analyzer/solar_client.py`, `backend/analyzer/prompts/step1.py` 삭제.
+
+결정적 채점 (`build_checklist` / `calculate_risk_score` / `classify_risk_level`) 은 유지된다.
+체크리스트 항목 설명(prose)의 단일 생성 경로:
+
+1. backend `run_step1` → `solar_explanation = ""` 초기화 (schema default)
+2. `attach_agent_report` → `explain_checklist_with_agent`
+3. agent `gongsiri-checklist-explanation` skill 실행
+4. `merge_checklist_explanations` → `solar_explanation` 채움
+
+backend 는 LLM 으로 prose 를 직접 생성하지 않는다 (G010).

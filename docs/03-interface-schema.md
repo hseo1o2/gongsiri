@@ -228,6 +228,10 @@ Required fields:
 - `evidence_refs: Array<{ label: str; source: str; observed_at?: str | None }>`
 - `source: str` (`"deterministic_backend"` in G006)
 - `observed_at?: str | None`
+- `solar_explanation: str` — agent `gongsiri-checklist-explanation` skill 산출 Markdown.
+  `backend/analyzer/run_step1` 반환 시점에는 빈 문자열(`""`),
+  `attach_agent_report` 단계에서 agent skill 결과로 채워진다.
+  backend LLM 이 직접 생성하지 않는다 (G010).
 
 Interpretation:
 

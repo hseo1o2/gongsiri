@@ -555,6 +555,8 @@ def test_attach_agent_report_rejects_malformed_pi_success_without_report_text():
 
 
 def test_attach_agent_report_merges_checklist_explanations_from_agent():
+    # solar_explanation 의 단일 SoT 는 agent skill (gongsiri-checklist-explanation).
+    # backend run_step1 는 빈 문자열로 초기화하고, attach_agent_report 가 채운다.
     from backend.agent_service import attach_agent_report
 
     class FakeAgentClient:

@@ -12,6 +12,7 @@ from backend.collector.normalize import (
 from backend.http_contracts import pipeline_status_code
 from backend.routes.dev_auth_routes import router as dev_auth_router
 from backend.routes.dev_data_routes import router as dev_data_router
+from backend.routes.disclosure_routes import router as disclosure_router
 from backend.routes.external_api_routes import router as external_api_router
 from backend.routes.pipeline_routes import router as pipeline_router
 from backend.routes.qa_routes import router as qa_router
@@ -28,6 +29,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Gongsiri A Data Pipeline", lifespan=lifespan)
 app.include_router(dev_auth_router)
 app.include_router(dev_data_router)
+app.include_router(disclosure_router)
 app.include_router(external_api_router)
 app.include_router(pipeline_router)
 app.include_router(qa_router)
