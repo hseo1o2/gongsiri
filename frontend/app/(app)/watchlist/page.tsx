@@ -1,8 +1,13 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { IconTrash } from "@tabler/icons-react";
 import Topbar from "@/components/layout/Topbar";
 import RiskBadge from "@/components/ui/RiskBadge";
 import RiskProgressBar from "@/components/ui/RiskProgressBar";
 import AddStockButton from "./_components/AddStockButton";
+import PriceCell from "./_components/PriceCell";
+import PriceRefreshButton from "./_components/PriceRefreshButton";
 
 interface WatchlistItemData {
   corp_code: string;
@@ -51,8 +56,15 @@ async function fetchWatchlist(): Promise<WatchlistItemData[]> {
   }
 }
 
-export default async function WatchlistPage() {
-  const watchlist = await fetchWatchlist();
+export default function WatchlistPage() {
+  const [watchlist, setWatchlist] = useState<WatchlistItemData[]>([]);
+  const [prices, setPrices] = useState<
+    Map<string, { price: number | null; change_rate: number | null }>
+  >(new Map());
+
+  useEffect(() => {
+    fetchWatchlist().then(setWatchlist);
+  }, []);
 
   return (
     <div>
@@ -60,12 +72,13 @@ export default async function WatchlistPage() {
       <div style={{ padding: 16 }}>
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
           <AddStockButton />
-          <PriceRefreshSlot
+          <PriceRefreshButton
             items={watchlist.map((i) => ({
               stock_code: i.stock_code,
               market: i.market,
               corp_code: i.corp_code,
             }))}
+            onUpdate={setPrices}
           />
         </div>
         <div
@@ -144,13 +157,13 @@ export default async function WatchlistPage() {
                     {item.stock_code} · {item.market}
                   </p>
                 </div>
-                <PriceCellSlot
-                  stockCode={item.stock_code}
-                  market={item.market}
+                <PriceCell
+                  price={prices.get(item.stock_code)?.price ?? null}
+                  changeRate={null}
                 />
-                <PriceCellSlot
-                  stockCode={item.stock_code}
-                  market={item.market}
+                <PriceCell
+                  price={null}
+                  changeRate={prices.get(item.stock_code)?.change_rate ?? null}
                 />
                 <RiskBadge level="normal" size="sm" />
                 <RiskProgressBar score={0} level="normal" />
@@ -176,35 +189,30 @@ export default async function WatchlistPage() {
 }
 
 function DeleteButton({ corpCode }: { corpCode: string }) {
+  async function handleDelete() {
+    const res = await fetch(
+      `/api/watchlist?corp_code=${encodeURIComponent(corpCode)}`,
+      { method: "DELETE" },
+    );
+    if (res.ok) {
+      window.location.reload();
+    }
+  }
+
   return (
-    <form
-      action={async () => {
-        "use server";
-        const apiBase =
-          process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
-        await fetch(
-          `${apiBase}/api/watchlist?corp_code=${encodeURIComponent(corpCode)}`,
-          {
-            method: "DELETE",
-            cache: "no-store",
-          },
-        );
+    <button
+      onClick={handleDelete}
+      style={{
+        background: "none",
+        border: "none",
+        cursor: "pointer",
+        color: "var(--color-text-tertiary)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
       }}
     >
-      <button
-        type="submit"
-        style={{
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          color: "var(--color-text-tertiary)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <IconTrash size={14} />
-      </button>
-    </form>
+      <IconTrash size={14} />
+    </button>
   );
 }

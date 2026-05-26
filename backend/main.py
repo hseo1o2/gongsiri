@@ -16,6 +16,7 @@ from backend.routes.disclosure_routes import router as disclosure_router
 from backend.routes.external_api_routes import router as external_api_router
 from backend.routes.pipeline_routes import router as pipeline_router
 from backend.routes.qa_routes import router as qa_router
+from backend.routes.quote_routes import router as quote_router
 from backend.routes.report_routes import create_report_response
 from backend.routes.stocks_routes import router as stocks_router
 from backend.routes.watchlist_routes import router as watchlist_router
@@ -35,6 +36,7 @@ app.include_router(disclosure_router)
 app.include_router(external_api_router)
 app.include_router(pipeline_router)
 app.include_router(qa_router)
+app.include_router(quote_router)
 app.include_router(stocks_router)
 app.include_router(watchlist_router)
 
