@@ -21,7 +21,6 @@ from backend.routes.quote_routes import router as quote_router
 from backend.routes.report_cache_routes import router as report_cache_router
 from backend.routes.report_routes import create_report_response
 from backend.routes.stocks_routes import router as stocks_router
-from backend.routes.watchlist_routes import router as watchlist_router
 from backend.services.report_seed import seed_reports_on_startup
 from backend.storage.connection import get_repository_provider
 
@@ -44,7 +43,6 @@ app.include_router(pipeline_router)
 app.include_router(qa_router)
 app.include_router(quote_router)
 app.include_router(report_cache_router)
-app.include_router(watchlist_router)
 
 
 @app.get("/")

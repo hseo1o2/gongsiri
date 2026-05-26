@@ -18,7 +18,7 @@ def test_dev_schema_creates_required_tables_and_indexes():
 
     create_schema(connection)
 
-    assert SCHEMA_VERSION == "dev-db-v1"
+    assert SCHEMA_VERSION == "dev-db-v2"
     assert fetch_table_names(connection) == set(TABLES)
     assert expected_index_names().issubset(fetch_index_names(connection))
 

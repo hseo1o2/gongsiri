@@ -1,24 +1,21 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
 
 from backend.analyzer.pipeline import CONTRACT_VERSION, run_pipeline_request
+from backend.auth.dev_session import resolve_dev_user_id
 from backend.services.report_envelope import build_typed_envelope, now_iso
-from backend.storage.json_store import read_json, write_json
+from backend.storage.connection import get_repository_provider
 
 router = APIRouter(prefix="/api/reports", tags=["report-cache"])
-
-REPORTS_DIR = Path("data/reports")
 
 
 @router.get("/{corp_code}")
 async def get_cached_report(corp_code: str):
-    path = REPORTS_DIR / f"{corp_code}.json"
-    cached = read_json(path, default=None)
+    provider = get_repository_provider()
+    cached = provider.report_cache.get(user_id=resolve_dev_user_id(), corp_code=corp_code)
     if cached is None:
         return JSONResponse(
             content={"ok": False, "error": {"code": "cache_miss"}},
@@ -41,6 +38,11 @@ async def refresh_report(corp_code: str):
     )
     generated_at = now_iso()
     envelope = build_typed_envelope(corp_code, generated_at, response)
-    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-    write_json(REPORTS_DIR / f"{corp_code}.json", envelope)
+    provider = get_repository_provider()
+    provider.report_cache.upsert(
+        user_id=resolve_dev_user_id(),
+        corp_code=corp_code,
+        generated_at=generated_at,
+        payload=envelope,
+    )
     return JSONResponse(content=envelope, status_code=200)
