@@ -24,7 +24,7 @@ def build_typed_envelope(
                 "report": { corpCode, corpName, analyzedAt, riskScore, riskLevel,
                             checklist, shortTermReport, longTermReport,
                             disclaimer, missingEvidence },
-                "fallback": null
+                "fallback": { "used": false }
             }
         }
     """
@@ -60,7 +60,7 @@ def build_typed_envelope(
     payload: dict[str, Any] = {
         "view": "report-detail",
         "report": report,
-        "fallback": None,
+        "fallback": {"used": False},
     }
 
     return {
