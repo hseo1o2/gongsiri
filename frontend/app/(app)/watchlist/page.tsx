@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { IconTrash } from "@tabler/icons-react";
 import Topbar from "@/components/layout/Topbar";
 import RiskBadge from "@/components/ui/RiskBadge";
@@ -42,16 +42,20 @@ export default function WatchlistPage() {
     Map<string, { price: number | null; change_rate: number | null }>
   >(new Map());
 
-  useEffect(() => {
+  const refresh = useCallback(() => {
     loadWatchlist().then(setWatchlist);
   }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   return (
     <div>
       <Topbar title="워치리스트" />
       <div style={{ padding: 16 }}>
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-          <AddStockButton />
+          <AddStockButton onAdded={refresh} />
           <PriceRefreshButton
             items={watchlist.map((i) => ({
               stock_code: i.stock_code,

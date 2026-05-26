@@ -3,7 +3,11 @@
 import { useState } from "react";
 import AddStockModal from "./AddStockModal";
 
-export default function AddStockButton() {
+interface Props {
+  onAdded?: () => void;
+}
+
+export default function AddStockButton({ onAdded }: Props) {
   const [showModal, setShowModal] = useState(false);
 
   return (
@@ -25,7 +29,9 @@ export default function AddStockButton() {
       >
         + 종목 추가
       </button>
-      {showModal && <AddStockModal onClose={() => setShowModal(false)} />}
+      {showModal && (
+        <AddStockModal onClose={() => setShowModal(false)} onAdded={onAdded} />
+      )}
     </>
   );
 }
