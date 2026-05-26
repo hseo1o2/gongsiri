@@ -17,6 +17,8 @@ from backend.routes.external_api_routes import router as external_api_router
 from backend.routes.pipeline_routes import router as pipeline_router
 from backend.routes.qa_routes import router as qa_router
 from backend.routes.report_routes import create_report_response
+from backend.routes.stocks_routes import router as stocks_router
+from backend.routes.watchlist_routes import router as watchlist_router
 from backend.storage.connection import get_repository_provider
 
 
@@ -33,6 +35,8 @@ app.include_router(disclosure_router)
 app.include_router(external_api_router)
 app.include_router(pipeline_router)
 app.include_router(qa_router)
+app.include_router(stocks_router)
+app.include_router(watchlist_router)
 
 
 @app.get("/")

@@ -1,31 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { IconX } from "@tabler/icons-react";
 import Button from "@/components/ui/Button";
-import { useDemoSession } from "@/lib/demo-session";
-import type { CompanyInfo, WatchlistItem } from "@/lib/types";
+import type { CompanyInfo } from "@/lib/types";
 import SearchInput from "./SearchInput";
 
 interface Props {
   onClose: () => void;
 }
 
-function toWatchlistItem(company: CompanyInfo): WatchlistItem | null {
-  if (!company.corp_code || !company.market) return null;
-  return {
-    corp_code: company.corp_code,
-    corp_name: company.corp_name,
-    stock_code: company.stock_code,
-    market: company.market,
-    risk_level: "normal",
-    risk_score: 0,
-    last_analyzed: "분석 전",
-  };
-}
-
 export default function AddStockModal({ onClose }: Props) {
-  const { addWatchlistItem, dispatch, state } = useDemoSession();
+  const router = useRouter();
   const [selected, setSelected] = useState<CompanyInfo | null>(null);
   const [done, setDone] = useState(false);
   const [error, setError] = useState("");
@@ -35,31 +22,38 @@ export default function AddStockModal({ onClose }: Props) {
     setDone(false);
     setError("");
 
-    const item = toWatchlistItem(selected);
-    if (!item) {
-      dispatch({ type: "watchlist/notFound", query: selected.corp_name });
-      setError(
-        `${selected.corp_name} 종목 정보를 찾을 수 없습니다.`,
-      );
-      return;
-    }
-
-    if (state.watchlistByCorpCode[item.corp_code]) {
-      // 이미 워치리스트에 있으면 모달 내 에러로만 안내하고 reducer dispatch는 생략한다.
-      setError(`${item.corp_name}은 이미 워치리스트에 있습니다.`);
+    if (!selected.corp_code || !selected.market) {
+      setError(`${selected.corp_name} 종목 정보를 찾을 수 없습니다.`);
       return;
     }
 
     try {
-      await addWatchlistItem(item);
-      setDone(true);
-      setTimeout(onClose, 900);
-    } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : "저 공시리가 워치리스트를 저장하지 못했습니다.",
-      );
+      const res = await fetch("/api/watchlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          corp_code: selected.corp_code,
+          stock_code: selected.stock_code,
+          name: selected.corp_name,
+          market: selected.market,
+          added_at: new Date().toISOString(),
+        }),
+      });
+
+      if (res.status === 201) {
+        setDone(true);
+        setTimeout(() => {
+          onClose();
+          router.refresh();
+        }, 900);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(
+          data?.detail ?? "저 공시리가 워치리스트를 저장하지 못했습니다.",
+        );
+      }
+    } catch {
+      setError("저 공시리가 워치리스트를 저장하지 못했습니다.");
     }
   }
 
