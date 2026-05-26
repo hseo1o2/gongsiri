@@ -1,11 +1,9 @@
 import logging
 import os
 
-from starlette.concurrency import run_in_threadpool
-
-from backend.analyzer.pipeline import run_pipeline_request
 from backend.auth.dev_session import resolve_dev_user_id
-from backend.services.report_envelope import build_typed_envelope, now_iso
+from backend.report_runtime_common import detail_view_from_report_row
+from backend.services.report_envelope import now_iso
 from backend.storage.connection import get_repository_provider
 
 logger = logging.getLogger(__name__)
@@ -24,23 +22,24 @@ async def seed_reports_on_startup() -> None:
             continue
         existing = provider.report_cache.get(user_id=user_id, corp_code=corp_code)
         if existing is not None:
-            logger.info(f"[seed] skip {corp_code} (cache hit)")
-            continue
-        logger.info(f"[seed] seeding {corp_code}...")
-        pipeline_req = {"corpCode": corp_code, "source": "seed", "contractVersion": "v1"}
-        try:
-            response = await run_in_threadpool(
-                run_pipeline_request, pipeline_req, trace_id=f"seed-{corp_code}"
+            cached_report = existing.get("payload", {}).get("report", {})
+            if cached_report.get("shortTermReport"):
+                logger.info(f"[seed] skip {corp_code} (cache hit)")
+                continue
+            logger.info(
+                f"[seed] {corp_code} cache has empty body — rebuilding from analysis_reports"
             )
-            generated_at = now_iso()
-            envelope = build_typed_envelope(corp_code, generated_at, response)
-            provider.report_cache.upsert(
-                user_id=user_id,
-                corp_code=corp_code,
-                generated_at=generated_at,
-                payload=envelope,
-            )
-            logger.info(f"[seed] {corp_code} done")
-        except Exception as e:
-            logger.warning(f"[seed] {corp_code} failed: {e}")
+        stored = provider.reports.get_latest_detail(user_id=user_id, corp_code=corp_code)
+        if stored is None:
+            logger.info(f"[seed] skip {corp_code} (no analysis_reports row)")
             continue
+        generated_at = str(stored.get("generated_at") or now_iso())
+        payload = detail_view_from_report_row(stored, fallback={"used": False})
+        envelope = {"generated_at": generated_at, "payload": payload}
+        provider.report_cache.upsert(
+            user_id=user_id,
+            corp_code=corp_code,
+            generated_at=generated_at,
+            payload=envelope,
+        )
+        logger.info(f"[seed] {corp_code} seeded from analysis_reports")

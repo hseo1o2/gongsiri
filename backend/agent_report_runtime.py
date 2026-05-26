@@ -12,6 +12,7 @@ from backend.agent_runtime_common import (
     merge_checklist_explanations,
     validate_analysis_guard,
 )
+from backend.analyzer.pipeline import CONTRACT_VERSION
 
 
 def extract_report_fields(agent_response: dict[str, Any]) -> dict[str, str]:
@@ -81,7 +82,7 @@ def attach_agent_report(
             bundle=result.get("normalized_data_bundle"),
             analysis_result=analysis_result,
             trace_id=str(pipeline_response.get("traceId") or ""),
-            contract_version=str(pipeline_response.get("contractVersion") or "v1"),
+            contract_version=str(pipeline_response.get("contractVersion") or CONTRACT_VERSION),
             client=agent_client,
         )
         analysis_result = merge_checklist_explanations(

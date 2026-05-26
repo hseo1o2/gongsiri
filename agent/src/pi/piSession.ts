@@ -9,8 +9,8 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import { resolveAgentRoot } from "../agentPaths.js";
 
-const DEFAULT_MODEL = "solar-pro3";
-const PROVIDER = "upstage";
+export const DEFAULT_MODEL = "solar-pro3";
+export const PROVIDER = "upstage";
 
 const systemPrompt = [
   "당신은 공시리(Gongsiri) Pi agent입니다.",
@@ -27,7 +27,12 @@ export type PiRunResult = {
   model: string;
 };
 
-const requireApiKey = (): string => {
+export type PiSessionOptions = {
+  modelId: string;
+  agentDir: string;
+};
+
+export const requireApiKey = (): string => {
   const key = process.env.UPSTAGE_API_KEY?.trim();
   if (!key) {
     throw new Error(
@@ -37,7 +42,10 @@ const requireApiKey = (): string => {
   return key;
 };
 
-const createRegistry = (apiKey: string, modelId: string): ModelRegistry => {
+export const createRegistry = (
+  apiKey: string,
+  modelId: string,
+): ModelRegistry => {
   const authStorage = AuthStorage.inMemory();
   authStorage.setRuntimeApiKey(PROVIDER, apiKey);
   const registry = ModelRegistry.inMemory(authStorage);
@@ -68,6 +76,45 @@ const createRegistry = (apiKey: string, modelId: string): ModelRegistry => {
     ],
   });
   return registry;
+};
+
+export type PiSession = Awaited<
+  ReturnType<typeof createAgentSession>
+>["session"];
+
+export const createPiSession = async (
+  options: PiSessionOptions,
+): Promise<PiSession> => {
+  const registry = createRegistry(requireApiKey(), options.modelId);
+  const model = registry.find(PROVIDER, options.modelId);
+  if (!model) {
+    throw new Error("저 공시리가 사용할 답변 모델을 찾지 못했습니다.");
+  }
+  const loader = new DefaultResourceLoader({
+    cwd: process.cwd(),
+    agentDir: options.agentDir,
+    noExtensions: true,
+    noSkills: true,
+    noPromptTemplates: true,
+    noThemes: true,
+    noContextFiles: true,
+    systemPromptOverride: () => systemPrompt,
+  });
+  await loader.reload();
+  const { session } = await createAgentSession({
+    model,
+    thinkingLevel: "high",
+    authStorage: registry.authStorage,
+    modelRegistry: registry,
+    resourceLoader: loader,
+    sessionManager: SessionManager.inMemory(),
+    settingsManager: SettingsManager.inMemory({
+      compaction: { enabled: false },
+      retry: { enabled: true, maxRetries: 1 },
+    }),
+    noTools: "all",
+  });
+  return session;
 };
 
 export const runPiSession = async (prompt: string): Promise<PiRunResult> => {

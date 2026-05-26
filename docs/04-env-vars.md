@@ -33,6 +33,10 @@ PR1에서 Pi runtime과 Python collector bridge가 기대하는 환경변수를 
 - `NAVER_CLIENT_ID` — Naver news search API client id
 - `NAVER_CLIENT_SECRET` — Naver news search API client secret
 
+## QA Warm Session 튜닝 상수
+
+QA Warm Session 튜닝값은 코드 상수 (`IDLE_TTL_MS=30분, MAX_WARM=100`) — 환경변수로 노출하지 않는다.
+
 ## Default Policy
 
 - `PYTHON_BIN` is optional; if omitted, the runtime may use `python3` as the default executable policy.

@@ -1,4 +1,4 @@
-export type ContractVersion = "v1";
+export type ContractVersion = "v2";
 export type TriggerSource = "user" | "system" | "cron";
 
 type SharedFetchDisclosuresFields = {

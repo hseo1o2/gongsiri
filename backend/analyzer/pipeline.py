@@ -9,7 +9,7 @@ from backend.analyzer.qa import analyze_bundle
 from backend.collector.runtime_normalize import build_runtime_normalized_bundle
 from backend.schemas.analysis import PipelineResultData
 
-CONTRACT_VERSION = "v1"
+CONTRACT_VERSION = "v2"
 
 
 class InvalidPipelineRequestError(ValueError):

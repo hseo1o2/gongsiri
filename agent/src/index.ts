@@ -21,7 +21,7 @@ export const createRuntimeSkeleton = (
   tool: ToolDefinition = fetchDisclosuresTool,
 ): RuntimeSkeleton => {
   const traceId = prompt.traceId ?? "pi-bootstrap-trace";
-  const contractVersion = prompt.contractVersion ?? "v1";
+  const contractVersion = prompt.contractVersion ?? "v2";
   const session = createSessionContext(traceId, contractVersion);
 
   return {
@@ -35,7 +35,7 @@ export const runManualPrompt = async (
   text: string,
   options: {
     traceId?: string;
-    contractVersion?: "v1";
+    contractVersion?: "v2";
     tool?: ToolDefinition;
   } = {},
 ) => {
@@ -44,7 +44,7 @@ export const runManualPrompt = async (
     {
       ...prompt,
       traceId: options.traceId ?? `manual-${Date.now()}`,
-      contractVersion: options.contractVersion ?? "v1",
+      contractVersion: options.contractVersion ?? "v2",
     },
     options.tool ?? fetchDisclosuresTool,
   );

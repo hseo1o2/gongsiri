@@ -169,6 +169,10 @@ The former agent-side `run_analysis_pipeline` tool/CLI surface is removed. Pipel
 
 ## Demo Pi SDK HTTP Service Contract
 
+> **CONTRACT_VERSION 변경 (2026-05-26)**: `"v1"` → `"v2"`. 서버는 항상 `"v2"`를 echo한다. 1주일 전환 기간 동안 `"v1"`을 포함한 인커밍 요청도 수락하지만 응답은 항상 `"v2"`. 전환 기간 종료 후 `"v1"` 요청은 `invalid_request`로 거부될 수 있다.
+
+> **QA 멀티턴 (2026-05-26)**: `mode: "qa"` + `conversationKey` 가 있으면 warm session 경로(`agent/src/pi/qaSession.ts`)로 분기한다. `mode: "report"` · `mode: "checklist_explanation"` 및 `conversationKey` 없는 QA 호출은 single-call 경로(`runPiSession`)를 유지한다.
+
 Implementation surface:
 
 - Node package: `agent/`
@@ -195,15 +199,25 @@ type AgentAnalysisGuard = {
   checklistIds: string[];
 };
 
+type AgentQaPriorTurn = {
+  question: string;
+  answer: string;
+  evidence?: Record<string, unknown>;
+  askedAt: string; // ISO-8601 UTC, ASC order (oldest first)
+};
+
 type AgentServiceRequest = {
   mode?: "report" | "qa" | "checklist_explanation";
   traceId?: string;
-  contractVersion?: "v1";
+  contractVersion?: "v2"; // server always echoes "v2"; "v1" accepted during 1-week transition window
   source?: "user" | "system" | "cron";
   corpCode?: string;
   corpName?: string;
   question?: string; // required for /qa
   checklistIds?: string[]; // optional focus list for /checklist-explanation
+  // QA multi-turn fields (required for /qa warm-session path; omit or leave empty for single-call)
+  conversationKey?: string; // format: "${user_id}::${corp_code}"
+  priorTurns?: AgentQaPriorTurn[]; // max 2 entries, ASC by askedAt; [] means first turn
   normalizedDataBundle?: Record<string, unknown>;
   bundle?: Record<string, unknown>;
   analysisResult?: Record<string, unknown>;
@@ -220,7 +234,7 @@ type AgentServiceResponse =
       ok: true;
       mode: "report" | "qa" | "checklist_explanation";
       traceId: string;
-      contractVersion: "v1";
+      contractVersion: "v2";
       observedAt: string;
       markdown: string;
       text: string;
@@ -253,7 +267,7 @@ type AgentServiceResponse =
       ok: false;
       mode: "report" | "qa" | "checklist_explanation";
       traceId: string;
-      contractVersion: "v1";
+      contractVersion: "v2";
       observedAt: string;
       markdown: "";
       text: "";

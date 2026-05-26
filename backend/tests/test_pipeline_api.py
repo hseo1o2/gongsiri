@@ -55,9 +55,9 @@ def test_pipeline_trigger_empty_body_uses_route_level_default_evidence(monkeypat
     assert payload["ok"] is True
     assert payload["triggerSource"] == "user"
     assert payload["traceId"]
-    assert payload["contractVersion"] == "v1"
+    assert payload["contractVersion"] == "v2"
     assert payload["observedAt"]
-    assert calls == [{"source": "user", "keyword": "카카오", "contractVersion": "v1"}]
+    assert calls == [{"source": "user", "keyword": "카카오", "contractVersion": "v2"}]
     assert any(
         item.get("source") == "pipeline_trigger_route"
         and item.get("defaultUsed") is True
@@ -102,7 +102,7 @@ def test_pipeline_trigger_explicit_keyword_wins_over_default(monkeypatch):
     assert payload["ok"] is True
     assert payload["triggerSource"] == "cron"
     assert calls == [
-        {"source": "cron", "keyword": "네이버", "traceId": "keyword-trace", "contractVersion": "v1"}
+        {"source": "cron", "keyword": "네이버", "traceId": "keyword-trace", "contractVersion": "v2"}
     ]
     assert not any(item.get("defaultUsed") is True for item in payload["evidence"])
 
@@ -131,7 +131,7 @@ def test_pipeline_trigger_explicit_corp_code_wins_over_default(monkeypatch):
             "source": "system",
             "corpCode": "00258801",
             "traceId": "corp-trace",
-            "contractVersion": "v1",
+            "contractVersion": "v2",
         }
     ]
 
@@ -170,7 +170,7 @@ def test_api_v1_reports_detail_returns_view_discriminated_contract(monkeypatch):
     assert payload["fallback"] == {"used": False}
     assert "ok" not in payload
     assert "result" not in payload
-    assert calls == [{"source": "user", "contractVersion": "v1", "corpCode": "00258801"}]
+    assert calls == [{"source": "user", "contractVersion": "v2", "corpCode": "00258801"}]
 
 
 def test_api_v1_reports_detail_reads_saved_cache_before_generation(monkeypatch):
@@ -302,7 +302,7 @@ def test_qa_route_accepts_snake_case_corp_code(monkeypatch):
     )
     monkeypatch.setattr(
         "backend.routes.qa_routes.answer_qa_with_agent",
-        lambda *, question, bundle, analysis_result, trace_id, contract_version: {
+        lambda *, question, bundle, analysis_result, trace_id, contract_version, **kwargs: {
             "answer": f"answer:{question}",
             "source": "pi_agent_http",
             "evidence": [{"source": "pi_agent_http"}],
@@ -340,7 +340,7 @@ def test_qa_route_accepts_camel_case_corp_code(monkeypatch):
     )
     monkeypatch.setattr(
         "backend.routes.qa_routes.answer_qa_with_agent",
-        lambda *, question, bundle, analysis_result, trace_id, contract_version: {
+        lambda *, question, bundle, analysis_result, trace_id, contract_version, **kwargs: {
             "answer": "ok",
             "source": "pi_agent_http",
             "evidence": [{"source": "pi_agent_http"}],
@@ -378,7 +378,7 @@ def test_qa_route_accepts_keyword_when_corp_code_missing(monkeypatch):
     )
     monkeypatch.setattr(
         "backend.routes.qa_routes.answer_qa_with_agent",
-        lambda *, question, bundle, analysis_result, trace_id, contract_version: {
+        lambda *, question, bundle, analysis_result, trace_id, contract_version, **kwargs: {
             "answer": "ok",
             "source": "pi_agent_http",
             "evidence": [{"source": "pi_agent_http"}],

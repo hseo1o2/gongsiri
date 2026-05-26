@@ -76,12 +76,32 @@ async def qa_route(request: Request):
     try:
         payload, _empty_body = await read_json_object(request)
         question, corp_code, keyword = _resolve_qa_request(payload)
+        user_id = resolve_dev_user_id()
         bundle = await run_in_threadpool(
             build_runtime_normalized_bundle,
             keyword=keyword,
             corp_code=corp_code,
         )
         analysis_result = await run_in_threadpool(analyze_bundle, bundle)
+
+        bundle_payload = bundle.model_dump() if hasattr(bundle, "model_dump") else bundle
+        company = bundle_payload.get("company") if isinstance(bundle_payload, dict) else {}
+        effective_corp_code = str((company or {}).get("corp_code") or "")
+
+        conversation_key: dict | None = None
+        prior_turns: list[dict] = []
+        if effective_corp_code:
+            raw_turns = await run_in_threadpool(
+                get_repository_provider().qa_history.list_recent_turns,
+                user_id=user_id,
+                corp_code=effective_corp_code,
+                limit=2,
+            )
+            for row in raw_turns:
+                prior_turns.append({"role": "user", "content": str(row.get("question") or "")})
+                prior_turns.append({"role": "assistant", "content": str(row.get("answer") or "")})
+            conversation_key = {"userId": user_id, "corpCode": effective_corp_code}
+
         answer = await run_in_threadpool(
             answer_qa_with_agent,
             question=question,
@@ -89,6 +109,8 @@ async def qa_route(request: Request):
             analysis_result=analysis_result,
             trace_id=str(payload.get("traceId") or uuid4()),
             contract_version=str(payload.get("contractVersion") or CONTRACT_VERSION),
+            conversation_key=conversation_key,
+            prior_turns=prior_turns or None,
         )
         await run_in_threadpool(
             _save_qa_history_row,

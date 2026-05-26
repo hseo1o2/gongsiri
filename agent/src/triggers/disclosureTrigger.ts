@@ -1,18 +1,18 @@
 import type {
   DisclosureTriggerInput,
   DisclosureTriggerRequest,
-  TriggerSource
+  TriggerSource,
 } from "../contracts/request.js";
 import type {
   ToolResultFailure,
   ToolResultSuccess,
-  TriggeredDisclosureResult
+  TriggeredDisclosureResult,
 } from "../contracts/response.js";
 import type { ToolDefinition } from "../contracts/tool.js";
 import { fetchDisclosuresTool } from "../tools/fetchDisclosures.js";
 import {
   LocalDisclosureCheckpointStore,
-  resolveCheckpointPath
+  resolveCheckpointPath,
 } from "../state/disclosureCheckpoint.js";
 import {
   buildCheckpoint,
@@ -22,12 +22,11 @@ import {
   resolveCanonicalCorpCode,
   resolveCurrentLastSeen,
   resolveRequestKey,
-  VALID_SOURCES
+  VALID_SOURCES,
 } from "./disclosureTriggerSupport.js";
 
-
 export const createDisclosureTriggerRequest = (
-  input: DisclosureTriggerInput
+  input: DisclosureTriggerInput,
 ): DisclosureTriggerRequest => {
   if (!VALID_SOURCES.includes(input.source)) {
     throw new Error(`지원하지 않는 trigger source 입니다: ${input.source}`);
@@ -40,27 +39,27 @@ export const createDisclosureTriggerRequest = (
   const sharedFields = {
     source: input.source,
     traceId: input.traceId,
-    contractVersion: input.contractVersion ?? "v1",
+    contractVersion: input.contractVersion ?? "v2",
     metadata:
       input.intervalMinutes || input.runReason
         ? {
             intervalMinutes: input.intervalMinutes,
-            runReason: input.runReason
+            runReason: input.runReason,
           }
-        : undefined
+        : undefined,
   };
 
   if (input.corpCode) {
     return {
       ...sharedFields,
       corpCode: input.corpCode,
-      keyword: input.keyword
+      keyword: input.keyword,
     };
   }
 
   return {
     ...sharedFields,
-    keyword: input.keyword as string
+    keyword: input.keyword as string,
   };
 };
 
@@ -69,12 +68,15 @@ export const runTriggeredDisclosureCheck = async (
   options: {
     tool?: ToolDefinition;
     checkpointStore?: LocalDisclosureCheckpointStore;
-  } = {}
+  } = {},
 ): Promise<TriggeredDisclosureResult> => {
   const tool = options.tool ?? fetchDisclosuresTool;
-  const checkpointStore = options.checkpointStore ?? new LocalDisclosureCheckpointStore();
+  const checkpointStore =
+    options.checkpointStore ?? new LocalDisclosureCheckpointStore();
   const requestKey = resolveRequestKey(request);
-  const fallbackPreviousLastSeen = requestKey ? checkpointStore.read(requestKey) : null;
+  const fallbackPreviousLastSeen = requestKey
+    ? checkpointStore.read(requestKey)
+    : null;
   const result = await tool.invoke(request);
 
   if (!result.ok) {
@@ -82,7 +84,7 @@ export const runTriggeredDisclosureCheck = async (
       request,
       result,
       fallbackPreviousLastSeen,
-      checkpointStore.checkpointPath
+      checkpointStore.checkpointPath,
     );
   }
 
@@ -90,11 +92,16 @@ export const runTriggeredDisclosureCheck = async (
   const { previousLastSeen, migratedFromRequestKey } = readPreviousLastSeen(
     checkpointStore,
     canonicalKey,
-    requestKey
+    requestKey,
   );
   const currentLastSeen = resolveCurrentLastSeen(result);
-  const newDisclosureIds = collectNewDisclosureIds(result.data.disclosures, previousLastSeen);
-  const hasNewDisclosure = previousLastSeen ? newDisclosureIds.length > 0 : false;
+  const newDisclosureIds = collectNewDisclosureIds(
+    result.data.disclosures,
+    previousLastSeen,
+  );
+  const hasNewDisclosure = previousLastSeen
+    ? newDisclosureIds.length > 0
+    : false;
 
   if (currentLastSeen) {
     checkpointStore.write(canonicalKey, currentLastSeen);
@@ -112,7 +119,11 @@ export const runTriggeredDisclosureCheck = async (
     hasNewDisclosure,
     newDisclosureCount: newDisclosureIds.length,
     newDisclosureIds,
-    checkpoint: buildCheckpoint(checkpointStore.checkpointPath, previousLastSeen, currentLastSeen),
-    result
+    checkpoint: buildCheckpoint(
+      checkpointStore.checkpointPath,
+      previousLastSeen,
+      currentLastSeen,
+    ),
+    result,
   };
 };

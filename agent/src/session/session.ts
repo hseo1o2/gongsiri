@@ -13,23 +13,22 @@ export type AgentSessionContext = {
   solar: SolarConfig;
 };
 
-export const resolveContractVersion = (): ContractVersion =>
-  process.env.GONGSIRI_CONTRACT_VERSION === "v1" ? "v1" : "v1";
+export const resolveContractVersion = (): ContractVersion => "v2";
 
 export const resolveSolarConfig = (): SolarConfig => ({
   apiKey: process.env.UPSTAGE_API_KEY ?? null,
-  model: process.env.UPSTAGE_MODEL ?? null
+  model: process.env.UPSTAGE_MODEL ?? null,
 });
 
 export const createSessionContext = (
   traceId: string,
   contractVersion: ContractVersion = resolveContractVersion(),
-  pythonBin = process.env.PYTHON_BIN ?? "python3"
+  pythonBin = process.env.PYTHON_BIN ?? "python3",
 ): AgentSessionContext => ({
   traceId,
   contractVersion,
   pythonBin,
-  solar: resolveSolarConfig()
+  solar: resolveSolarConfig(),
 });
 
 loadLocalEnvFiles();

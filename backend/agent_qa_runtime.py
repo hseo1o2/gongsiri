@@ -18,6 +18,8 @@ def answer_qa_with_agent(
     analysis_result: Any,
     trace_id: str,
     contract_version: str,
+    conversation_key: dict[str, str] | None = None,
+    prior_turns: list[dict[str, Any]] | None = None,
     client: AgentServiceClient | None = None,
 ) -> dict[str, Any]:
     agent_client = client or AgentServiceClient()
@@ -26,16 +28,19 @@ def answer_qa_with_agent(
         analysis_result.model_dump() if hasattr(analysis_result, "model_dump") else analysis_result
     )
     analysis_payload_dict = dict(analysis_payload or {})
-    agent_response = agent_client.answer_qa(
-        {
-            "mode": "qa",
-            "traceId": trace_id,
-            "contractVersion": contract_version,
-            "question": question,
-            "normalizedDataBundle": bundle_payload,
-            "analysisResult": analysis_payload,
-        }
-    )
+    payload: dict[str, Any] = {
+        "mode": "qa",
+        "traceId": trace_id,
+        "contractVersion": contract_version,
+        "question": question,
+        "normalizedDataBundle": bundle_payload,
+        "analysisResult": analysis_payload,
+    }
+    if conversation_key:
+        payload["conversationKey"] = conversation_key
+    if prior_turns:
+        payload["priorTurns"] = prior_turns
+    agent_response = agent_client.answer_qa(payload)
     validate_analysis_guard(
         agent_response,
         analysis_result=analysis_payload_dict,

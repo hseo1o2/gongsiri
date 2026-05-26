@@ -13,7 +13,7 @@ type CreateFetchDisclosuresToolOptions = {
   timeoutMs?: number;
 };
 
-const DEFAULT_CONTRACT_VERSION = "v1" as const;
+const DEFAULT_CONTRACT_VERSION = "v2" as const;
 const DEFAULT_TRACE_ID = "pi-bootstrap-trace";
 const DEFAULT_BACKEND_URL = "http://127.0.0.1:8000";
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -23,7 +23,7 @@ const buildFailure = (
   code: ToolResultFailure["error"]["code"],
   message: string,
   traceId: string,
-  contractVersion: "v1",
+  contractVersion: "v2",
 ): ToolResultFailure => ({
   ok: false,
   traceId,
@@ -38,7 +38,7 @@ const buildFailure = (
 
 const resolveRequestContractVersion = (
   request: FetchDisclosuresRequest,
-): "v1" =>
+): "v2" =>
   request.contractVersion ??
   resolveContractVersion() ??
   DEFAULT_CONTRACT_VERSION;

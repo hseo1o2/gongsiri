@@ -196,6 +196,15 @@ Rules: `frontend → backend` allowed; `backend → agent` allowed;
   `backend/analyzer/qa.py` as fallback.
 - All user-facing report/QA/error copy should speak as first-person `공시리`.
 
+## QA Multi-Turn Architecture (2026-05-26)
+
+QA 경로와 Report·checklist_explanation 경로는 명시적으로 분리된다.
+
+- **QA (`mode: "qa"` + `conversationKey` 있음)**: process-scope warm `Map<convKey, AgentSession>` 재사용. `convKey = "${user_id}::${corp_code}"`. idle TTL 30분, LRU 100. cold restart 시 `qa_history`의 최근 N≤20턴을 `session.agent.state.messages`에 Path A 직접 주입(`pi-agent-core@0.75.4 agent.d.ts:70` 공식 copy-on-assign 시맨틱). 구현: `agent/src/pi/qaSession.ts`.
+- **Report / checklist_explanation / QA without conversationKey**: single-call (`createAgentSession → prompt → dispose`). warm map에 영향 없음. 구현: `runPiSession` (`agent/src/pi/piSession.ts`).
+
+Deferred(§8): 멀티 인스턴스 sticky routing / 분산 conversation cache.
+
 ## G010 Narrative Migration Note
 
 As of G010, backend analyzer ownership is narrowed to deterministic scoring, evidence mapping, and preparation DTOs. Report narrative, Q&A prose, and checklist explanation prose belong to the 공시리 agent modes (`report`, `qa`, `checklist_explanation`) over normalized backend facts. Legacy `backend/analyzer/solar_step*.py` prompt modules are retained only as historical/compatibility artifacts until later cleanup removes them entirely.

@@ -51,6 +51,7 @@ async def trigger_analysis_pipeline(request: Request):
         )
         if default_used and response.get("ok"):
             response = _append_route_default_evidence(response, "카카오")
+        response = {**response, "contractVersion": CONTRACT_VERSION}
         return JSONResponse(content=response, status_code=200)
     except ValueError as exc:
         source = "user"

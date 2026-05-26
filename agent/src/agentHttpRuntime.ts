@@ -10,6 +10,7 @@ import type {
   AgentServiceResponse,
 } from "./contracts/agentService.js";
 import { runPiSession } from "./pi/piSession.js";
+import { runQaTurn, getWarmSessionsStats } from "./pi/qaSession.js";
 import { buildPrompt } from "./agentPrompt.js";
 import { AgentResponseParseError, parseModeResult } from "./agentModeParser.js";
 import {
@@ -84,7 +85,16 @@ const handleAgent = async (
   try {
     const rawBody = await readBody(req);
     request = validate(JSON.parse(rawBody || "{}"), mode);
-    const result = await runPiSession(buildPrompt(request));
+    let result: import("./pi/piSession.js").PiRunResult;
+    if (mode === "qa" && request.mode === "qa" && request.conversationKey) {
+      result = await runQaTurn(
+        request.conversationKey,
+        buildPrompt(request),
+        request.priorTurns ?? [],
+      );
+    } else {
+      result = await runPiSession(buildPrompt(request));
+    }
     const parsed = parseModeResult(mode, result.text, request);
     json(res, 200, {
       ok: true,
@@ -127,11 +137,14 @@ export const createAgentHttpServer = () =>
     const res = rawRes as unknown as ResponseLike;
     const path = req.url?.split("?")[0] ?? "/";
     if (req.method === "GET" && path === "/health") {
+      const stats = getWarmSessionsStats();
       json(res, 200, {
         ok: true,
         service: "gongsiri-pi-agent",
         contractVersion: contractVersion(),
         observedAt: nowIso(),
+        warmSessions: stats.entries,
+        warmSessionsSize: stats.size,
       } satisfies AgentHealthResponse);
       return;
     }

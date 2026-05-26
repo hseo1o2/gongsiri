@@ -33,9 +33,18 @@ export type AgentReportRequest = AgentRequestBase & {
   prompt?: string;
 };
 
+export interface AgentQaPriorTurn {
+  question: string;
+  answer: string;
+  evidence?: unknown[];
+  askedAt: string; // ISO-8601
+}
+
 export type AgentQaRequest = AgentRequestBase & {
   mode?: "qa";
   question: string;
+  conversationKey?: string;
+  priorTurns?: AgentQaPriorTurn[];
 };
 
 export type AgentChecklistExplanationRequest = AgentRequestBase & {
@@ -112,4 +121,11 @@ export type AgentHealthResponse = {
   service: "gongsiri-pi-agent";
   contractVersion: ContractVersion;
   observedAt: string;
+  warmSessions?: Array<{
+    convKeyHash: string;
+    turnCount: number;
+    lastUsedAt: number;
+    sessionStartedAt: number;
+  }>;
+  warmSessionsSize?: number;
 };

@@ -157,6 +157,10 @@ cd frontend && pnpm test
 lefthook install
 ```
 
+## QA 멀티턴 컨텍스트
+
+QA는 같은 `(user, corp)` 단위로 컨텍스트가 이어집니다 (TTL 30m, LRU 100). `conversationKey="${user_id}::${corp_code}"` 기준으로 warm session이 유지되며, 세션 만료·재기동 시 `qa_history`의 최근 N≤20턴이 cold replay됩니다. Report·checklist_explanation은 single-call 경로를 유지합니다.
+
 ## Out of scope
 
 - 실시간 주가/매매 연동

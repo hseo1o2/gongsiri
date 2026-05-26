@@ -76,7 +76,7 @@ Success envelope:
 
 - `ok: true`
 - `traceId: string`
-- `contractVersion: "v1"`
+- `contractVersion: "v2"`
 - `observedAt: ISO-8601 UTC string`
 - `data.corpCode: string`
 - `data.company: CompanyInfo | null`
@@ -87,7 +87,7 @@ Failure envelope:
 
 - `ok: false`
 - `traceId: string`
-- `contractVersion: "v1"`
+- `contractVersion: "v2"`
 - `observedAt: ISO-8601 UTC string`
 - `error.code: string`
 - `error.message: string`

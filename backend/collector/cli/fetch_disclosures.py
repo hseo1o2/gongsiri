@@ -6,6 +6,7 @@ import sys
 from datetime import UTC, datetime
 from typing import Any
 
+from backend.analyzer.pipeline import CONTRACT_VERSION
 from backend.collector.bridge.disclosures import (
     InvalidRequestError,
     run_fetch_disclosures_request,
@@ -71,7 +72,7 @@ def _invalid_request_response(trace_id: str, message: str) -> dict[str, Any]:
     return {
         "ok": False,
         "traceId": trace_id,
-        "contractVersion": "v1",
+        "contractVersion": CONTRACT_VERSION,
         "observedAt": _observed_at(),
         "error": {
             "code": "invalid_request",

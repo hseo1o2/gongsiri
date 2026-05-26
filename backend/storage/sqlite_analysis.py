@@ -90,6 +90,18 @@ class SQLiteQaHistoryRepository:
         row = self.connection.execute("SELECT * FROM qa_history WHERE id = ?", (item["id"],))
         return _decode_qa(row.fetchone())
 
+    def list_recent_turns(self, *, user_id: str, corp_code: str, limit: int = 2) -> list[Row]:
+        rows = self.connection.execute(
+            """
+            SELECT id, corp_code, corp_name, question, answer, evidence_json,
+                   asked_at, source_version
+            FROM qa_history WHERE user_id = ? AND corp_code = ?
+            ORDER BY asked_at DESC LIMIT ?
+            """,
+            (user_id, corp_code, limit),
+        ).fetchall()
+        return [_decode_qa(row) for row in reversed(rows)]
+
 
 class SQLiteAgentRunLogRepository:
     def __init__(self, connection: sqlite3.Connection) -> None:

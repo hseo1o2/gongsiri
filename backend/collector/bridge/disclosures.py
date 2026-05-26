@@ -4,11 +4,11 @@ from datetime import UTC, datetime
 from typing import Any, Callable, Mapping
 from uuid import uuid4
 
+from backend.analyzer.pipeline import CONTRACT_VERSION
 from backend.collector.company_resolver import resolve_company_read_only
 from backend.collector.dart import fetch_disclosures
 from backend.schemas.bundle import CompanyInfo, DisclosureItem
 
-CONTRACT_VERSION = "v1"
 DEFAULT_BGN_DE = "20240101"
 DEFAULT_END_DE = "20241231"
 DEFAULT_PAGE_COUNT = 20
