@@ -161,7 +161,7 @@ export default function WatchlistPage() {
                   level={item.risk_level ?? "normal"}
                 />
                 <CheckButton corpCode={item.corp_code} />
-                <DeleteButton corpCode={item.corp_code} />
+                <DeleteButton corpCode={item.corp_code} onDeleted={refresh} />
               </div>
             ))
           )}
@@ -181,14 +181,20 @@ export default function WatchlistPage() {
   );
 }
 
-function DeleteButton({ corpCode }: { corpCode: string }) {
+function DeleteButton({
+  corpCode,
+  onDeleted,
+}: {
+  corpCode: string;
+  onDeleted?: () => void;
+}) {
   async function handleDelete() {
     const res = await fetch(
       `/api/watchlist?corp_code=${encodeURIComponent(corpCode)}`,
       { method: "DELETE" },
     );
     if (res.ok) {
-      window.location.reload();
+      onDeleted?.();
     }
   }
 
