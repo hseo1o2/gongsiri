@@ -1,10 +1,14 @@
 import json
+import logging
 from pathlib import Path
 from typing import Any
 
 import requests
 
+from backend.collector.dart_corp_index import get_corp_code_by_stock_code
 from backend.schemas.bundle import CompanyInfo
+
+logger = logging.getLogger(__name__)
 
 K_SKILL_SEARCH_URL = "https://k-skill-proxy.nomadamas.org/v1/korean-stock/search"
 DEFAULT_BAS_DD = "20250516"
@@ -243,3 +247,111 @@ def resolve_company_read_only(keyword: str) -> CompanyInfo:
     - 원격 조회가 성공해도 결과를 파일에 persist 하지 않는다.
     """
     return search_stock(keyword, persist_result=False)
+
+
+def _enrich_corp_code(company: CompanyInfo) -> CompanyInfo | None:
+    """corp_code가 없는 CompanyInfo에 DART 매핑으로 채운다. 채울 수 없으면 None."""
+    if company.corp_code:
+        return company
+    mapped = get_corp_code_by_stock_code(company.stock_code)
+    if mapped is None:
+        logger.info("corp_code 매핑 실패로 제외: %s (%s)", company.corp_name, company.stock_code)
+        return None
+    return CompanyInfo(
+        corp_name=company.corp_name,
+        stock_code=company.stock_code,
+        corp_code=mapped,
+        market=company.market,
+    )
+
+
+def _search_kskill_multi(keyword: str, bas_dd: str = DEFAULT_BAS_DD) -> list[CompanyInfo]:
+    """
+    K-Skill 검색 결과 다건을 CompanyInfo 리스트로 반환한다.
+    타임아웃 5초, 실패 시 빈 리스트.
+    """
+    params = {"q": keyword, "bas_dd": bas_dd, "limit": 10}
+    try:
+        logger.info("K-Skill 호출: q=%s", keyword)
+        response = requests.get(K_SKILL_SEARCH_URL, params=params, timeout=5)
+        if response.status_code == 429:
+            logger.warning("K-Skill 429 rate limit")
+            return []
+        response.raise_for_status()
+        data = response.json()
+        items = (
+            data.get("items") or data.get("data") or data.get("results") or data.get("stocks") or []
+        )
+        if isinstance(items, dict):
+            items = [items]
+        results: list[CompanyInfo] = []
+        for item in items:
+            try:
+                results.append(parse_kskill_item(item, fallback_name=keyword))
+            except ValueError:
+                continue
+        return results
+    except Exception as exc:
+        logger.info("K-Skill 호출 실패: %s", exc)
+        return []
+
+
+def resolve_companies(q: str) -> list[CompanyInfo]:
+    """
+    검색어 q에 매칭되는 CompanyInfo 리스트를 반환한다.
+
+    전략:
+    1. 로컬 마스터에서 부분 매칭 — corp_code 있으면 즉시 포함.
+    2. K-Skill API 다건 조회 — corp_code 없는 항목은 DART 매핑으로 채움.
+    3. corp_code가 null인 항목은 결과에서 제외.
+    """
+    keyword = normalize_keyword(q)
+    if not keyword:
+        return []
+
+    seen_codes: set[str] = set()
+    results: list[CompanyInfo] = []
+
+    # 1단계: 로컬 마스터
+    stock_master = load_stock_master(create_if_missing=False)
+    for name, info in stock_master.items():
+        corp_name = str(info.get("corp_name") or name)
+        stock_code = str(info.get("stock_code") or "")
+        corp_code = info.get("corp_code") or None
+        market = info.get("market") or None
+
+        haystack = f"{corp_name} {stock_code}".lower()
+        if keyword.lower() not in haystack:
+            continue
+
+        if not corp_code:
+            corp_code = get_corp_code_by_stock_code(stock_code)
+        if not corp_code:
+            logger.info("로컬 마스터 corp_code 미보유 — 제외: %s", corp_name)
+            continue
+
+        if stock_code not in seen_codes:
+            seen_codes.add(stock_code)
+            results.append(
+                CompanyInfo(
+                    corp_name=corp_name,
+                    stock_code=stock_code,
+                    corp_code=corp_code,
+                    market=market,
+                )
+            )
+        logger.info("로컬 히트: %s (%s)", corp_name, stock_code)
+
+    # 2단계: K-Skill API
+    if len(results) < 10:
+        kskill_results = _search_kskill_multi(keyword)
+        for company in kskill_results:
+            if company.stock_code in seen_codes:
+                continue
+            enriched = _enrich_corp_code(company)
+            if enriched is None:
+                continue
+            seen_codes.add(enriched.stock_code)
+            results.append(enriched)
+
+    return results[:10]

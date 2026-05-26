@@ -12,27 +12,39 @@ from backend.collector.normalize import (
 from backend.http_contracts import pipeline_status_code
 from backend.routes.dev_auth_routes import router as dev_auth_router
 from backend.routes.dev_data_routes import router as dev_data_router
+from backend.routes.disclosure_check_routes import router as disclosure_check_router
 from backend.routes.disclosure_routes import router as disclosure_router
 from backend.routes.external_api_routes import router as external_api_router
 from backend.routes.pipeline_routes import router as pipeline_router
 from backend.routes.qa_routes import router as qa_router
+from backend.routes.quote_routes import router as quote_router
+from backend.routes.report_cache_routes import router as report_cache_router
 from backend.routes.report_routes import create_report_response
+from backend.routes.stocks_routes import router as stocks_router
+from backend.routes.watchlist_routes import router as watchlist_router
+from backend.services.report_seed import seed_reports_on_startup
 from backend.storage.connection import get_repository_provider
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     get_repository_provider()
+    await seed_reports_on_startup()
     yield
 
 
 app = FastAPI(title="Gongsiri A Data Pipeline", lifespan=lifespan)
 app.include_router(dev_auth_router)
 app.include_router(dev_data_router)
+app.include_router(disclosure_check_router)
 app.include_router(disclosure_router)
+app.include_router(stocks_router)
 app.include_router(external_api_router)
 app.include_router(pipeline_router)
 app.include_router(qa_router)
+app.include_router(quote_router)
+app.include_router(report_cache_router)
+app.include_router(watchlist_router)
 
 
 @app.get("/")

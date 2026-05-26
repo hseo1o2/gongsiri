@@ -17,10 +17,8 @@ export default function ReanalyzeButton({ corpCode }: Props) {
       size="sm"
       onClick={() =>
         startTransition(async () => {
-          await fetch('/api/v1/reports', {
+          await fetch(`/api/reports/${corpCode}/refresh`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ view: 'report-detail', corpCode, forceRefresh: true }),
           })
           router.refresh()
         })

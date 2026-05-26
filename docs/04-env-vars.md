@@ -24,6 +24,7 @@ PR1에서 Pi runtime과 Python collector bridge가 기대하는 환경변수를 
 - `GONGSIRI_CRON_ENABLED` — optional cron scheduler enable flag; default `true` (set to `"false"` to disable in CI/test environments)
 - `AGENT_BACKEND_URL` — optional backend base URL for cron-originated report push; default `http://127.0.0.1:8000`
 - `NEXT_PUBLIC_API_BASE_URL` — optional frontend/runtime HTTP base URL for typed API clients (default `http://localhost:8000`)
+- `GONGSIRI_SKIP_SEED` — optional; set to `"1"` to skip automatic report seeding on backend startup (cold-start 단축, 개발/CI 용도)
 
 ### Python collector side
 

@@ -45,3 +45,7 @@ uv.lock
 
 # Makefile runtime state (PID/log files)
 .pids/
+
+# Playwright MCP runtime artifacts (verdict screenshots, snapshot YAMLs)
+.playwright-mcp/
+/verdict-*.png

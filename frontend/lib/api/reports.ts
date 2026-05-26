@@ -126,6 +126,10 @@ export interface ReportDetailViewModel {
   };
 }
 
+export interface ReportCacheMiss {
+  cacheMiss: true;
+}
+
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -220,38 +224,44 @@ function normalizeChecklist(
 
 export async function fetchReportDetailViewModel(
   corpCode: string,
-  forceRefresh = false,
-): Promise<ReportDetailViewModel> {
-  const payload = (await postReports(
-    {
-      view: "report-detail",
-      corpCode,
-      ...(forceRefresh ? { forceRefresh: true } : {}),
-    },
-    { cache: "no-store" },
-  )) as unknown;
+): Promise<ReportDetailViewModel | ReportCacheMiss> {
+  const baseUrl =
+    typeof window === "undefined"
+      ? (process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000").replace(/\/$/, "")
+      : "";
+  const url = `${baseUrl}/api/reports/${encodeURIComponent(corpCode)}`;
+  const res = await fetch(url, { cache: "no-store" });
 
-  if (isTypedReportDetailResponse(payload)) {
-    return {
-      corpCode: payload.report.corpCode,
-      corpName: payload.report.corpName,
-      analyzedAt: payload.report.analyzedAt,
-      result: {
-        risk_score: payload.report.riskScore,
-        risk_level: payload.report.riskLevel,
-        checklist: normalizeChecklist(payload.report.checklist),
-        short_term_report: payload.report.shortTermReport,
-        long_term_report: payload.report.longTermReport ?? "",
-        disclaimer: payload.report.disclaimer,
-        missing_evidence: payload.report.missingEvidence,
-      },
-      fallback: payload.fallback,
-    };
+  if (res.status === 404) {
+    return { cacheMiss: true };
   }
 
-  if (isFailureEnvelope(payload)) {
+  const cached = (await res.json()) as unknown;
+
+  if (isObject(cached) && isObject((cached as Record<string, unknown>).payload)) {
+    const payload = (cached as Record<string, unknown>).payload as unknown;
+    if (isTypedReportDetailResponse(payload)) {
+      return {
+        corpCode: payload.report.corpCode,
+        corpName: payload.report.corpName,
+        analyzedAt: payload.report.analyzedAt,
+        result: {
+          risk_score: payload.report.riskScore,
+          risk_level: payload.report.riskLevel,
+          checklist: normalizeChecklist(payload.report.checklist),
+          short_term_report: payload.report.shortTermReport,
+          long_term_report: payload.report.longTermReport ?? "",
+          disclaimer: payload.report.disclaimer,
+          missing_evidence: payload.report.missingEvidence,
+        },
+        fallback: payload.fallback,
+      };
+    }
+  }
+
+  if (isFailureEnvelope(cached)) {
     throw new Error(
-      payload.error?.message ??
+      cached.error?.message ??
         "저 공시리가 리포트 상세를 불러오지 못했습니다.",
     );
   }

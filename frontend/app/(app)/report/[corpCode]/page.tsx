@@ -1,6 +1,6 @@
 import Topbar from '@/components/layout/Topbar'
 import RiskBadge from '@/components/ui/RiskBadge'
-import { fetchReportDetailViewModel } from '@/lib/api/reports'
+import { fetchReportDetailViewModel, type ReportCacheMiss, type ReportDetailViewModel } from '@/lib/api/reports'
 import ChecklistPanel from './_components/ChecklistPanel'
 import ReportSection from './_components/ReportSection'
 import ReanalyzeButton from './_components/ReanalyzeButton'
@@ -21,6 +21,27 @@ export default async function ReportDetailPage({
       error: error instanceof Error ? error.message : '저 공시리가 리포트 상세를 불러오지 못했습니다.',
     }))
 
+  if (detail.value && (detail.value as ReportCacheMiss).cacheMiss === true) {
+    return (
+      <div>
+        <Topbar title="리포트 상세" showSearch={false} />
+        <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ background: '#E6F1FB', borderLeft: '3px solid #3B8BFF', padding: '12px 14px', borderRadius: 'var(--radius-md)' }}>
+            <p style={{ fontSize: 13, fontWeight: 500, color: '#185FA5', letterSpacing: '-0.03em' }}>
+              분석 중...
+            </p>
+            <p style={{ fontSize: 12, color: '#185FA5', marginTop: 4, letterSpacing: '-0.02em' }}>
+              아직 캐시된 리포트가 없습니다. 재분석 버튼을 눌러 분석을 시작하세요.
+            </p>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <ReanalyzeButton corpCode={corpCode} />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (!detail.value) {
     return (
       <div>
@@ -40,7 +61,7 @@ export default async function ReportDetailPage({
     )
   }
 
-  const { corpCode: resolvedCorpCode, corpName, analyzedAt, result, fallback } = detail.value
+  const { corpCode: resolvedCorpCode, corpName, analyzedAt, result, fallback } = detail.value as ReportDetailViewModel
   const isHigh = result.risk_level === 'high'
   const headerBg = result.risk_level === 'high' ? '#FCEBEB' : result.risk_level === 'caution' ? '#FAEEDA' : '#EAF3DE'
   const headerBorder = result.risk_level === 'high' ? '#E24B4A' : result.risk_level === 'caution' ? '#BA7517' : '#639922'
