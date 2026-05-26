@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { IconX } from "@tabler/icons-react";
 import Button from "@/components/ui/Button";
 import type { CompanyInfo } from "@/lib/types";
@@ -9,10 +8,10 @@ import SearchInput from "./SearchInput";
 
 interface Props {
   onClose: () => void;
+  onAdded?: () => void;
 }
 
-export default function AddStockModal({ onClose }: Props) {
-  const router = useRouter();
+export default function AddStockModal({ onClose, onAdded }: Props) {
   const [selected, setSelected] = useState<CompanyInfo | null>(null);
   const [done, setDone] = useState(false);
   const [error, setError] = useState("");
@@ -44,7 +43,7 @@ export default function AddStockModal({ onClose }: Props) {
         setDone(true);
         setTimeout(() => {
           onClose();
-          router.refresh();
+          onAdded?.();
         }, 900);
       } else {
         const data = await res.json().catch(() => ({}));

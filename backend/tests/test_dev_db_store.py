@@ -14,9 +14,10 @@ from backend.storage.sqlite_repositories import SQLiteRepositoryProvider
 NOW = "2026-05-22T01:00:00Z"
 
 
-def test_default_provider_uses_memory_mode_and_seeds_admin(monkeypatch):
+def test_default_provider_uses_file_mode_and_seeds_admin(tmp_path, monkeypatch):
+    db_path = tmp_path / "test_default.sqlite"
     monkeypatch.delenv("GONGSIRI_DB_MODE", raising=False)
-    monkeypatch.delenv("GONGSIRI_DB_PATH", raising=False)
+    monkeypatch.setenv("GONGSIRI_DB_PATH", str(db_path))
     reset_repository_provider()
 
     provider = get_repository_provider()
@@ -108,13 +109,13 @@ def test_repository_provider_round_trips_watchlist_report_and_qa():
     connection.close()
 
 
-def test_fastapi_lifespan_initializes_dev_repository(monkeypatch):
+def test_fastapi_lifespan_initializes_dev_repository(tmp_path, monkeypatch):
     from fastapi.testclient import TestClient
 
     from backend.main import app
 
-    monkeypatch.delenv("GONGSIRI_DB_MODE", raising=False)
-    monkeypatch.delenv("GONGSIRI_DB_PATH", raising=False)
+    monkeypatch.setenv("GONGSIRI_DB_MODE", "file")
+    monkeypatch.setenv("GONGSIRI_DB_PATH", str(tmp_path / "lifespan_test.sqlite"))
     reset_repository_provider()
 
     with TestClient(app):

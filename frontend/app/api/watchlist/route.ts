@@ -1,22 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
+import {
+  DEV_SESSION_COOKIE,
+  getBackendBaseUrl,
+  isDevSessionCookieValue,
+} from "@/lib/auth/dev-session";
 
-const DEFAULT_API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
-
-function trimTrailingSlash(value: string): string {
-  return value.endsWith("/") ? value.slice(0, -1) : value;
+function authGuard(req: NextRequest): NextResponse | null {
+  if (!isDevSessionCookieValue(req.cookies.get(DEV_SESSION_COOKIE)?.value)) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: {
+          code: "login_required",
+          message: "공시리 로그인이 필요합니다.",
+        },
+      },
+      { status: 401 },
+    );
+  }
+  return null;
 }
 
-function backendUrl(path: string): string {
-  return `${trimTrailingSlash(DEFAULT_API_BASE_URL)}${path}`;
-}
+export async function GET(req: NextRequest) {
+  const guard = authGuard(req);
+  if (guard) return guard;
 
-export async function GET() {
   try {
-    const response = await fetch(backendUrl("/api/watchlist"), {
-      cache: "no-store",
-    });
+    const response = await fetch(
+      `${getBackendBaseUrl()}/api/v1/dev/watchlist`,
+      { cache: "no-store" },
+    );
     const data = await response.json();
+    if (data?.ok && Array.isArray(data.items)) {
+      data.items = data.items.map(remapWatchlistItem);
+    }
     return NextResponse.json(data, { status: response.status });
   } catch {
     return NextResponse.json(
@@ -33,15 +50,30 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const guard = authGuard(req);
+  if (guard) return guard;
+
   try {
     const payload = await req.json();
-    const response = await fetch(backendUrl("/api/watchlist"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-      cache: "no-store",
-    });
+    const backendPayload = {
+      corp_code: payload.corp_code,
+      corp_name: payload.corp_name ?? payload.name,
+      stock_code: payload.stock_code,
+      market: payload.market,
+    };
+    const response = await fetch(
+      `${getBackendBaseUrl()}/api/v1/dev/watchlist`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(backendPayload),
+        cache: "no-store",
+      },
+    );
     const data = await response.json();
+    if (data?.ok && data.item) {
+      data.item = remapWatchlistItem(data.item);
+    }
     return NextResponse.json(data, { status: response.status });
   } catch {
     return NextResponse.json(
@@ -58,6 +90,9 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const guard = authGuard(req);
+  if (guard) return guard;
+
   const corpCode = req.nextUrl.searchParams.get("corp_code");
   if (!corpCode) {
     return NextResponse.json(
@@ -71,7 +106,7 @@ export async function DELETE(req: NextRequest) {
 
   try {
     const response = await fetch(
-      backendUrl(`/api/watchlist?corp_code=${encodeURIComponent(corpCode)}`),
+      `${getBackendBaseUrl()}/api/v1/dev/watchlist/${encodeURIComponent(corpCode)}`,
       { method: "DELETE", cache: "no-store" },
     );
     const data = await response.json();
@@ -88,4 +123,15 @@ export async function DELETE(req: NextRequest) {
       { status: 502 },
     );
   }
+}
+
+function remapWatchlistItem(
+  item: Record<string, unknown>,
+): Record<string, unknown> {
+  return {
+    ...item,
+    name: item.corp_name ?? item.name,
+    added_at: item.last_analyzed ?? item.added_at,
+    last_checked: item.last_checked ?? null,
+  };
 }

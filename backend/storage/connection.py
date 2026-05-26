@@ -18,7 +18,7 @@ _connection: sqlite3.Connection | None = None
 
 
 def connect_dev_db(*, mode: str | None = None, path: str | None = None) -> sqlite3.Connection:
-    resolved_mode = (mode or os.getenv("GONGSIRI_DB_MODE") or MEMORY_MODE).strip().lower()
+    resolved_mode = (mode or os.getenv("GONGSIRI_DB_MODE") or FILE_MODE).strip().lower()
     if resolved_mode not in {MEMORY_MODE, FILE_MODE}:
         raise ValueError("GONGSIRI_DB_MODE은 memory 또는 file이어야 합니다.")
 

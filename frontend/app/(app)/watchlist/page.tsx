@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { IconTrash } from "@tabler/icons-react";
 import Topbar from "@/components/layout/Topbar";
 import RiskBadge from "@/components/ui/RiskBadge";
@@ -9,42 +9,23 @@ import AddStockButton from "./_components/AddStockButton";
 import CheckButton from "./_components/CheckButton";
 import PriceCell from "./_components/PriceCell";
 import PriceRefreshButton from "./_components/PriceRefreshButton";
+import type { RiskLevel } from "@/lib/types";
 
 interface WatchlistItemData {
   corp_code: string;
+  corp_name: string;
   name: string;
   stock_code: string;
   market: string;
   added_at: string;
   last_checked?: string | null;
+  risk_level?: RiskLevel;
+  risk_score?: number;
+  price?: number | null;
+  change_rate?: number | null;
 }
 
-interface CheckButtonSlotProps {
-  corpCode: string;
-}
-
-interface PriceCellSlotProps {
-  stockCode: string;
-  market: string;
-}
-
-interface PriceRefreshSlotProps {
-  items: Array<{ stock_code: string; market: string; corp_code: string }>;
-}
-
-function CheckButtonSlot(_: CheckButtonSlotProps) {
-  return null;
-}
-
-function PriceCellSlot(_: PriceCellSlotProps) {
-  return null;
-}
-
-function PriceRefreshSlot(_: PriceRefreshSlotProps) {
-  return null;
-}
-
-async function fetchWatchlist(): Promise<WatchlistItemData[]> {
+async function loadWatchlist(): Promise<WatchlistItemData[]> {
   try {
     const res = await fetch(`/api/watchlist`, { cache: "no-store" });
     if (!res.ok) return [];
@@ -61,16 +42,20 @@ export default function WatchlistPage() {
     Map<string, { price: number | null; change_rate: number | null }>
   >(new Map());
 
-  useEffect(() => {
-    fetchWatchlist().then(setWatchlist);
+  const refresh = useCallback(() => {
+    loadWatchlist().then(setWatchlist);
   }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   return (
     <div>
       <Topbar title="워치리스트" />
       <div style={{ padding: 16 }}>
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-          <AddStockButton />
+          <AddStockButton onAdded={refresh} />
           <PriceRefreshButton
             items={watchlist.map((i) => ({
               stock_code: i.stock_code,
@@ -157,15 +142,24 @@ export default function WatchlistPage() {
                   </p>
                 </div>
                 <PriceCell
-                  price={prices.get(item.stock_code)?.price ?? null}
+                  price={
+                    prices.get(item.stock_code)?.price ?? item.price ?? null
+                  }
                   changeRate={null}
                 />
                 <PriceCell
                   price={null}
-                  changeRate={prices.get(item.stock_code)?.change_rate ?? null}
+                  changeRate={
+                    prices.get(item.stock_code)?.change_rate ??
+                    item.change_rate ??
+                    null
+                  }
                 />
-                <RiskBadge level="normal" size="sm" />
-                <RiskProgressBar score={0} level="normal" />
+                <RiskBadge level={item.risk_level ?? "normal"} size="sm" />
+                <RiskProgressBar
+                  score={item.risk_score ?? 0}
+                  level={item.risk_level ?? "normal"}
+                />
                 <CheckButton corpCode={item.corp_code} />
                 <DeleteButton corpCode={item.corp_code} />
               </div>

@@ -1,17 +1,14 @@
 from datetime import datetime, timezone
-from pathlib import Path
 
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+from backend.auth.dev_session import resolve_dev_user_id
 from backend.collector.dart import fetch_disclosures
-from backend.storage.json_store import read_json, write_json
+from backend.storage.connection import get_repository_provider
 
 router = APIRouter(prefix="/api/disclosure")
-
-WATCHLIST_PATH = Path("data/watchlist.json")
-CHECKPOINTS_PATH = Path("data/disclosure_checkpoints.json")
 
 
 class DisclosureCheckRequest(BaseModel):
@@ -41,35 +38,39 @@ async def check_disclosure(body: DisclosureCheckRequest):
             },
         )
 
-    checkpoints: dict = read_json(CHECKPOINTS_PATH, default={})
-    last_seen = checkpoints.get(corp_code)
+    provider = get_repository_provider()
+    user_id = resolve_dev_user_id()
+    checkpoint = provider.disclosure_checkpoints.get(user_id=user_id, corp_code=corp_code)
+    last_seen = checkpoint["last_seen_rcept_no"] if checkpoint else None
 
     latest_rcept_no = disclosures[0].rcept_no if disclosures else None
+    now_iso = datetime.now(timezone.utc).isoformat()
 
     if last_seen is None:
-        # 첫 호출: false positive 방지 — 현재 최신을 저장하고 false 반환
         has_new = False
         new_count = 0
         if latest_rcept_no:
-            checkpoints[corp_code] = latest_rcept_no
-            write_json(CHECKPOINTS_PATH, checkpoints)
+            provider.disclosure_checkpoints.upsert(
+                user_id=user_id,
+                corp_code=corp_code,
+                last_seen_rcept_no=latest_rcept_no,
+                updated_at=now_iso,
+            )
     else:
-        # 이전 체크포인트보다 새 rcept_no 개수 계산 (rcept_no는 날짜+순번 오름차순 문자열)
         new_items = [d for d in disclosures if d.rcept_no > last_seen]
         has_new = len(new_items) > 0
         new_count = len(new_items)
         if latest_rcept_no and latest_rcept_no > last_seen:
-            checkpoints[corp_code] = latest_rcept_no
-            write_json(CHECKPOINTS_PATH, checkpoints)
+            provider.disclosure_checkpoints.upsert(
+                user_id=user_id,
+                corp_code=corp_code,
+                last_seen_rcept_no=latest_rcept_no,
+                updated_at=now_iso,
+            )
 
-    now_iso = datetime.now(timezone.utc).isoformat()
-    watchlist = read_json(WATCHLIST_PATH, default={"items": []})
-    items = watchlist.get("items", [])
-    for item in items:
-        if item.get("corp_code") == corp_code:
-            item["last_checked"] = now_iso
-            break
-    write_json(WATCHLIST_PATH, {"items": items})
+    provider.watchlist.update_last_checked(
+        user_id=user_id, corp_code=corp_code, last_checked=now_iso
+    )
 
     return {
         "ok": True,

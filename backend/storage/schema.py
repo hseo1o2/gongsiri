@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 from collections.abc import Sequence
 
-SCHEMA_VERSION = "dev-db-v1"
+SCHEMA_VERSION = "dev-db-v2"
 
 TABLES: tuple[str, ...] = (
     "users",
@@ -12,6 +12,8 @@ TABLES: tuple[str, ...] = (
     "analysis_reports",
     "qa_history",
     "agent_run_logs",
+    "disclosure_checkpoints",
+    "report_cache",
 )
 
 CREATE_STATEMENTS: tuple[str, ...] = (
@@ -35,6 +37,7 @@ CREATE_STATEMENTS: tuple[str, ...] = (
         stock_code TEXT NOT NULL,
         market TEXT,
         added_at TEXT NOT NULL,
+        last_checked TEXT,
         source_version TEXT NOT NULL,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
         UNIQUE (user_id, corp_code)
@@ -101,6 +104,24 @@ CREATE_STATEMENTS: tuple[str, ...] = (
         error_json TEXT,
         source_version TEXT NOT NULL,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS disclosure_checkpoints (
+        user_id TEXT NOT NULL,
+        corp_code TEXT NOT NULL,
+        last_seen_rcept_no TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY (user_id, corp_code)
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS report_cache (
+        user_id TEXT NOT NULL,
+        corp_code TEXT NOT NULL,
+        generated_at TEXT NOT NULL,
+        payload_json TEXT NOT NULL,
+        PRIMARY KEY (user_id, corp_code)
     )
     """,
 )

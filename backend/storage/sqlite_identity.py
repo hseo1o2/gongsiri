@@ -53,6 +53,13 @@ class SQLiteWatchlistRepository:
         self.connection.commit()
         return self._get(str(item["user_id"]), str(item["corp_code"]))
 
+    def update_last_checked(self, *, user_id: str, corp_code: str, last_checked: str) -> None:
+        self.connection.execute(
+            "UPDATE watchlist_items SET last_checked = ? WHERE user_id = ? AND corp_code = ?",
+            (last_checked, user_id, corp_code),
+        )
+        self.connection.commit()
+
     def delete_item(self, *, user_id: str, corp_code: str) -> None:
         self.connection.execute(
             "DELETE FROM watchlist_items WHERE user_id = ? AND corp_code = ?", (user_id, corp_code)
@@ -67,6 +74,33 @@ class SQLiteWatchlistRepository:
         if row is None:
             raise RuntimeError("watchlist item 저장에 실패했습니다.")
         return row_dict(row)
+
+
+class SQLiteDisclosureCheckpointRepository:
+    def __init__(self, connection: sqlite3.Connection) -> None:
+        self.connection = connection
+
+    def get(self, *, user_id: str, corp_code: str) -> Row | None:
+        row = self.connection.execute(
+            "SELECT * FROM disclosure_checkpoints WHERE user_id = ? AND corp_code = ?",
+            (user_id, corp_code),
+        ).fetchone()
+        return row_dict(row) if row is not None else None
+
+    def upsert(
+        self, *, user_id: str, corp_code: str, last_seen_rcept_no: str, updated_at: str
+    ) -> None:
+        self.connection.execute(
+            """
+            INSERT INTO disclosure_checkpoints (user_id, corp_code, last_seen_rcept_no, updated_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(user_id, corp_code) DO UPDATE SET
+                last_seen_rcept_no = excluded.last_seen_rcept_no,
+                updated_at = excluded.updated_at
+            """,
+            (user_id, corp_code, last_seen_rcept_no, updated_at),
+        )
+        self.connection.commit()
 
 
 class SQLiteDisclosureRepository:

@@ -7,7 +7,9 @@ from backend.storage.sqlite_analysis import (
     SQLiteQaHistoryRepository,
     SQLiteReportRepository,
 )
+from backend.storage.sqlite_cache import SQLiteReportCacheRepository
 from backend.storage.sqlite_identity import (
+    SQLiteDisclosureCheckpointRepository,
     SQLiteDisclosureRepository,
     SQLiteUserRepository,
     SQLiteWatchlistRepository,
@@ -22,3 +24,5 @@ class SQLiteRepositoryProvider:
         self.reports = SQLiteReportRepository(connection)
         self.qa_history = SQLiteQaHistoryRepository(connection)
         self.agent_run_logs = SQLiteAgentRunLogRepository(connection)
+        self.disclosure_checkpoints = SQLiteDisclosureCheckpointRepository(connection)
+        self.report_cache = SQLiteReportCacheRepository(connection)

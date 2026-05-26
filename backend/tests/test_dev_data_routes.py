@@ -12,6 +12,7 @@ DISCLOSURES_PATH = "/api/v1/dev/disclosures/recent"
 
 def test_dev_dashboard_requires_dev_auth_mode(monkeypatch):
     monkeypatch.delenv("GONGSIRI_AUTH_MODE", raising=False)
+    monkeypatch.setenv("GONGSIRI_DB_MODE", "memory")
     reset_repository_provider()
 
     with TestClient(app) as client:
@@ -24,6 +25,7 @@ def test_dev_dashboard_requires_dev_auth_mode(monkeypatch):
 
 def test_dashboard_reads_seeded_admin_scope_from_dev_db(monkeypatch):
     monkeypatch.setenv("GONGSIRI_AUTH_MODE", "dev")
+    monkeypatch.setenv("GONGSIRI_DB_MODE", "memory")
     reset_repository_provider()
 
     with TestClient(app) as client:
@@ -47,6 +49,7 @@ def test_dashboard_reads_seeded_admin_scope_from_dev_db(monkeypatch):
 
 def test_watchlist_add_and_delete_persist_in_dev_db(monkeypatch):
     monkeypatch.setenv("GONGSIRI_AUTH_MODE", "dev")
+    monkeypatch.setenv("GONGSIRI_DB_MODE", "memory")
     reset_repository_provider()
 
     payload = {
@@ -71,6 +74,7 @@ def test_watchlist_add_and_delete_persist_in_dev_db(monkeypatch):
 
 def test_recent_disclosures_are_joined_to_admin_watchlist(monkeypatch):
     monkeypatch.setenv("GONGSIRI_AUTH_MODE", "dev")
+    monkeypatch.setenv("GONGSIRI_DB_MODE", "memory")
     reset_repository_provider()
 
     with TestClient(app) as client:

@@ -19,7 +19,7 @@ gongsiri/
 └── AGENTS.md / CLAUDE.md / README.md
 ```
 
-> 런타임 데이터는 `.gitignore`된 `data/`에 A의 collector가 자동 생성되며, Pi/OMX 로컬 상태는 `.clawhip/`, `.openchrome/`, `.omc/`, `.omx/`에만 남긴다.
+> 런타임 데이터의 SoT는 `.gitignore`된 `data/dev.sqlite` (SQLite file mode). dev fixture는 부팅 시 `backend/fixtures/dev_seed.json`에서 upsert된다. Supabase(Postgres) 이행 시 schema/repository 패턴을 그대로 옮긴다. `data/*.json` 형태의 별도 store는 더 이상 만들지 말 것. Pi/OMX 로컬 상태는 `.clawhip/`, `.openchrome/`, `.omc/`, `.omx/`에만 남긴다.
 
 ## 사람 담당 (A / B / C)
 
