@@ -15,7 +15,6 @@ export default function SearchInput({ onSelect }: Props) {
 
   useEffect(() => {
     if (!query.trim()) {
-      setResults([]);
       return;
     }
 
