@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import APIRouter
@@ -8,6 +7,7 @@ from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
 
 from backend.analyzer.pipeline import CONTRACT_VERSION, run_pipeline_request
+from backend.services.report_envelope import build_typed_envelope, now_iso
 from backend.storage.json_store import read_json, write_json
 
 router = APIRouter(prefix="/api/reports", tags=["report-cache"])
@@ -39,8 +39,8 @@ async def refresh_report(corp_code: str):
         pipeline_req,
         trace_id=f"refresh-{corp_code}",
     )
-    generated_at = datetime.now(timezone.utc).isoformat()
-    payload = {"generated_at": generated_at, "payload": response}
+    generated_at = now_iso()
+    envelope = build_typed_envelope(corp_code, generated_at, response)
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-    write_json(REPORTS_DIR / f"{corp_code}.json", payload)
-    return JSONResponse(content={"generated_at": generated_at, **response}, status_code=200)
+    write_json(REPORTS_DIR / f"{corp_code}.json", envelope)
+    return JSONResponse(content=envelope, status_code=200)

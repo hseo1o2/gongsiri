@@ -1,11 +1,11 @@
 import logging
 import os
-from datetime import datetime, timezone
 from pathlib import Path
 
 from starlette.concurrency import run_in_threadpool
 
 from backend.analyzer.pipeline import run_pipeline_request
+from backend.services.report_envelope import build_typed_envelope, now_iso
 from backend.storage.json_store import read_json, write_json
 
 logger = logging.getLogger(__name__)
@@ -34,12 +34,10 @@ async def seed_reports_on_startup() -> None:
             response = await run_in_threadpool(
                 run_pipeline_request, pipeline_req, trace_id=f"seed-{corp_code}"
             )
-            write_json(out_path, {"generated_at": _now_iso(), "payload": response})
+            generated_at = now_iso()
+            envelope = build_typed_envelope(corp_code, generated_at, response)
+            write_json(out_path, envelope)
             logger.info(f"[seed] {corp_code} done")
         except Exception as e:
             logger.warning(f"[seed] {corp_code} failed: {e}")
             continue
-
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
