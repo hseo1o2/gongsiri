@@ -47,12 +47,10 @@ export default function AddStockModal({ onClose, onAdded }: Props) {
         }, 900);
       } else {
         const data = await res.json().catch(() => ({}));
-        setError(
-          data?.detail ?? "저 공시리가 워치리스트를 저장하지 못했습니다.",
-        );
+        setError(data?.detail ?? "저 공시리가 관심종목을 저장하지 못했습니다.");
       }
     } catch {
-      setError("저 공시리가 워치리스트를 저장하지 못했습니다.");
+      setError("저 공시리가 관심종목을 저장하지 못했습니다.");
     }
   }
 
@@ -120,7 +118,7 @@ export default function AddStockModal({ onClose, onAdded }: Props) {
             letterSpacing: "-0.02em",
           }}
         >
-          검색한 종목을 선택하면 워치리스트에 추가됩니다.
+          검색한 종목을 선택하면 관심종목에 추가됩니다.
         </p>
 
         {selected && (
@@ -164,7 +162,7 @@ export default function AddStockModal({ onClose, onAdded }: Props) {
               letterSpacing: "-0.02em",
             }}
           >
-            ✓ 워치리스트에 등록되었습니다
+            ✓ 관심종목에 등록되었습니다
           </p>
         )}
 
