@@ -89,7 +89,7 @@ async def qa_route(request: Request):
         company = bundle_payload.get("company") if isinstance(bundle_payload, dict) else {}
         effective_corp_code = str((company or {}).get("corp_code") or "")
 
-        conversation_key: dict | None = None
+        conversation_key: str | None = None
         prior_turns: list[dict] = []
         if effective_corp_code:
             raw_turns = await run_in_threadpool(
@@ -101,7 +101,7 @@ async def qa_route(request: Request):
             for row in raw_turns:
                 prior_turns.append({"role": "user", "content": str(row.get("question") or "")})
                 prior_turns.append({"role": "assistant", "content": str(row.get("answer") or "")})
-            conversation_key = {"userId": user_id, "corpCode": effective_corp_code}
+            conversation_key = f"{user_id}::{effective_corp_code}"
 
         answer = await run_in_threadpool(
             answer_qa_with_agent,

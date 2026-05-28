@@ -18,7 +18,7 @@ def answer_qa_with_agent(
     analysis_result: Any,
     trace_id: str,
     contract_version: str,
-    conversation_key: dict[str, str] | None = None,
+    conversation_key: str | None = None,
     prior_turns: list[dict[str, Any]] | None = None,
     client: AgentServiceClient | None = None,
 ) -> dict[str, Any]:

@@ -239,11 +239,13 @@ class TestQaRoutePassesPriorTurns:
 
         assert resp.status_code == 200, f"expected 200, got {resp.status_code}: {resp.text}"
 
-        # conversation_key must be present with userId and corpCode
+        # conversation_key must be a non-empty string in "${user_id}::${corp_code}" format
         assert captured.get("conversation_key") is not None, "conversation_key should be set"
         conv_key = captured["conversation_key"]
-        assert "userId" in conv_key, f"conversation_key missing userId: {conv_key}"
-        assert conv_key["corpCode"] == "00258801", f"wrong corpCode in conversation_key: {conv_key}"
+        assert isinstance(conv_key, str) and "::" in conv_key, (
+            f"conversation_key should be 'user_id::corp_code' string, got: {conv_key!r}"
+        )
+        assert conv_key.endswith("::00258801"), f"wrong corpCode in conversation_key: {conv_key}"
 
         # prior_turns should contain 4 items: 2 turns × {role:user, role:assistant}
         prior = captured.get("prior_turns")
