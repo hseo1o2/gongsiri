@@ -70,13 +70,9 @@ DART, KRX, 네이버 뉴스  →  normalized_data_bundle  →  analysis_result  
 - 사용자에게 보이는 agent 답변/오류 문구는 1인칭 `공시리` 톤을 유지한다.
 
 ```bash
-# agent pane A: build watch (repo root에서 .env 로드 후 실행)
+# agent: 1-pane dev (tsc watch + node --watch, src 변경 시 자동 재기동)
 set -a; source .env; set +a
-cd agent && npm run build -- --watch --preserveWatchOutput
-
-# agent pane B: server watch
-set -a; source .env; set +a
-cd agent && node --watch dist/server.js
+cd agent && npm run dev
 # health: curl http://127.0.0.1:8787/health
 
 # backend: 반드시 repo root에서 실행 (backend.main import 경로 유지)
@@ -139,9 +135,9 @@ make status   # health 체크
 # Pi runtime typecheck
 cd agent && npm run typecheck
 
-# Agent server (after `npm run build -- --watch` in another pane)
+# Agent dev (1-pane: tsc watch + node --watch 자동 재기동)
 # (pnpm-workspace.yaml의 onlyBuiltDependencies 확정 이후 `pnpm approve-builds` 불필요)
-cd agent && node --watch dist/server.js
+cd agent && npm run dev
 
 # Backend dev (repo root)
 uv run --project backend uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000

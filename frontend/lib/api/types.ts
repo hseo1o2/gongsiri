@@ -34,6 +34,8 @@ export interface ReportSummaryContract {
   analyzedAt: string;
   riskLevel: RiskLevel;
   riskScore: number;
+  /** 워치리스트에 있지만 아직 리포트가 없는 종목은 false */
+  hasReport?: boolean;
 }
 
 export interface ReportDetailContract extends ReportSummaryContract {

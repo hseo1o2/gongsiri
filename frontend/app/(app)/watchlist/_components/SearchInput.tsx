@@ -11,13 +11,11 @@ interface Props {
 export default function SearchInput({ onSelect }: Props) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<CompanyInfo[]>([]);
+  const [searching, setSearching] = useState(false);
   const hasQuery = Boolean(query.trim());
 
   useEffect(() => {
-    if (!query.trim()) {
-      return;
-    }
-
+    if (!query.trim()) return;
     const timer = setTimeout(() => {
       fetch(`/api/stocks/search?q=${encodeURIComponent(query)}`)
         .then((res) => res.json())
@@ -27,11 +25,22 @@ export default function SearchInput({ onSelect }: Props) {
             : [];
           setResults(items.slice(0, 10));
         })
-        .catch(() => setResults([]));
+        .catch(() => setResults([]))
+        .finally(() => setSearching(false));
     }, 300);
 
     return () => clearTimeout(timer);
   }, [query]);
+
+  function handleQueryChange(value: string) {
+    setQuery(value);
+    if (value.trim()) {
+      setSearching(true);
+    } else {
+      setResults([]);
+      setSearching(false);
+    }
+  }
 
   function handleSelect(company: CompanyInfo) {
     onSelect(company);
@@ -55,7 +64,7 @@ export default function SearchInput({ onSelect }: Props) {
         />
         <input
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => handleQueryChange(e.target.value)}
           placeholder="종목명 또는 코드 검색"
           style={{
             width: "100%",
@@ -72,10 +81,7 @@ export default function SearchInput({ onSelect }: Props) {
         />
         {query && (
           <button
-            onClick={() => {
-              setQuery("");
-              setResults([]);
-            }}
+            onClick={() => handleQueryChange("")}
             style={{
               position: "absolute",
               right: 10,
@@ -108,7 +114,7 @@ export default function SearchInput({ onSelect }: Props) {
             boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
           }}
         >
-          {results.length === 0 && (
+          {!searching && results.length === 0 && (
             <p
               style={{
                 padding: "10px 14px",

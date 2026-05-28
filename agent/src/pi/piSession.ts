@@ -185,34 +185,22 @@ export const runPiSession = async (
   });
   await loader.reload();
 
+  const baseOptions = {
+    model,
+    thinkingLevel: "high" as const,
+    authStorage: registry.authStorage,
+    modelRegistry: registry,
+    resourceLoader: loader,
+    sessionManager: SessionManager.inMemory(),
+    settingsManager: SettingsManager.inMemory({
+      compaction: { enabled: false },
+      retry: { enabled: true, maxRetries: 1 },
+    }),
+  };
   const sessionOptions =
     tools.length > 0
-      ? {
-          model,
-          thinkingLevel: "high" as const,
-          authStorage: registry.authStorage,
-          modelRegistry: registry,
-          resourceLoader: loader,
-          sessionManager: SessionManager.inMemory(),
-          settingsManager: SettingsManager.inMemory({
-            compaction: { enabled: false },
-            retry: { enabled: true, maxRetries: 1 },
-          }),
-          customTools: tools,
-        }
-      : {
-          model,
-          thinkingLevel: "high" as const,
-          authStorage: registry.authStorage,
-          modelRegistry: registry,
-          resourceLoader: loader,
-          sessionManager: SessionManager.inMemory(),
-          settingsManager: SettingsManager.inMemory({
-            compaction: { enabled: false },
-            retry: { enabled: true, maxRetries: 1 },
-          }),
-          noTools: "all" as const,
-        };
+      ? { ...baseOptions, customTools: tools }
+      : { ...baseOptions, noTools: "all" as const };
 
   const { session } = await createAgentSession(sessionOptions);
 
@@ -223,20 +211,33 @@ export const runPiSession = async (
   const toolTraces: TraceLogEntry[] = [];
   const abortController = new AbortController();
 
+  const traceVal = (process.env.GONGSIRI_TRACE_STDOUT ?? "true").toLowerCase();
+  const traceEnabled =
+    traceVal !== "0" && traceVal !== "false" && traceVal !== "off";
+  const tracePrefix = `pi:${promptCtx?.mode ?? "run"}:${(promptCtx?.traceId ?? "--------").slice(0, 8)}`;
+  const traceLog = (msg: string) => {
+    if (traceEnabled) console.log(`[${tracePrefix}] ${msg}`);
+  };
+
+  const sessionStartMs = Date.now();
+
   const unsubscribe = session.subscribe((event: unknown) => {
     const candidate = event as {
       type?: string;
       assistantMessageEvent?: { type?: string; delta?: string };
-      message?: string;
+      message?: unknown; // SDK turn_end의 message는 문자열이 아닌 메시지 객체
       toolResults?: Array<{
         toolName?: string;
         latencyMs?: number;
         status?: string;
+        input?: Record<string, unknown>;
+        output?: unknown;
       }>;
     };
 
     if (candidate.type === "turn_start") {
       currentTurnText = "";
+      traceLog(`turn ${turnCount + 1} start`);
     }
 
     if (
@@ -248,11 +249,21 @@ export const runPiSession = async (
     }
 
     if (candidate.type === "turn_end") {
-      // E4 defensive fallback: prefer event.message, fall back to accumulated text
-      finalText = candidate.message || currentTurnText;
+      // Pi SDK turn_end의 event.message는 메시지 객체({role, content, ...})이므로
+      // 문자열 텍스트는 message_update 이벤트로 누적한 currentTurnText를 사용한다.
+      finalText = currentTurnText;
 
       if (candidate.toolResults) {
         for (const tr of candidate.toolResults) {
+          const paramKeys = tr.input
+            ? `{${Object.keys(tr.input).join(", ")}}`
+            : "{}";
+          traceLog(`tool_call ${tr.toolName ?? "unknown"}(${paramKeys})`);
+          const outputLen =
+            tr.output != null ? JSON.stringify(tr.output).length : 0;
+          traceLog(
+            `tool_result ok=${tr.status === "success"} (${outputLen} bytes)`,
+          );
           toolTraces.push({
             turn: turnCount,
             toolName: tr.toolName ?? "unknown",
@@ -262,6 +273,7 @@ export const runPiSession = async (
         }
       }
 
+      traceLog(`turn ${turnCount + 1} end`);
       turnCount++;
       if (turnCount >= MAX_TURNS) {
         abortController.abort();
@@ -282,6 +294,9 @@ export const runPiSession = async (
     ]);
 
     if (raceResult.timedOut) {
+      traceLog(
+        `done turns=${turnCount} elapsed=${Date.now() - sessionStartMs}ms TIMEOUT`,
+      );
       return {
         text: "",
         model: `${PROVIDER}/${modelId}`,
@@ -290,6 +305,9 @@ export const runPiSession = async (
       };
     }
 
+    traceLog(
+      `done turns=${turnCount} elapsed=${Date.now() - sessionStartMs}ms`,
+    );
     const stripped = stripNonJsonPrefix(finalText.trim());
     return {
       text: stripped || finalText.trim(),

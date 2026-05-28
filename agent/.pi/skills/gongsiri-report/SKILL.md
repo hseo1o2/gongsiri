@@ -62,15 +62,19 @@ final turn에서는 다음 형식의 JSON만 출력하세요. JSON 앞뒤로 어
 {
   "shortTermMarkdown": "string",
   "longTermMarkdown": "string",
-  "disclaimerMarkdown": "string"
+  "disclaimerMarkdown": "string",
+  "checklist": []
 }
 ```
 
-- `shortTermMarkdown`: 1~3개월 단기 전망 (Markdown)
-- `longTermMarkdown`: 6~12개월 장기 전망 (Markdown)
+- `shortTermMarkdown`: **1~3개월 단기 관점** — 작전주 6항목 위험 시그널 중심. `run_risk_analysis`가 반환한 `risk_score`, `risk_level`, `checklist` 결과를 직접 인용하며 현재 위험 수준, 주의해야 할 공시·주가 이상 징후를 서술합니다. 장기 펀더멘털 내용은 **포함하지 마세요**.
+- `longTermMarkdown`: **6~12개월 장기 관점** — 사업 펀더멘털·재무건전성·사업가치 중심. 단기 위험 시그널 점수(risk_score)는 언급하지 말고, 사업 지속가능성·성장성·재무구조 관점에서 별도로 서술합니다. 단기 섹션과 **내용이 겹치지 않도록** 하세요.
 - `disclaimerMarkdown`: 반드시 "DART 공시·재무 기반 도메인 시그널만 분석하며, 차트·거래량·뉴스·루머는 포함하지 않습니다. 투자 자문이 아닙니다." 포함 (Markdown)
+- `checklist`: `run_risk_analysis` 툴이 반환한 `checklist` 배열을 그대로 복사. 툴 호출 실패 시 빈 배열 `[]`.
 
-출력 키는 정확히 `shortTermMarkdown`, `longTermMarkdown`, `disclaimerMarkdown` 3개여야 합니다. 다른 이름 사용 금지.
+출력 키는 정확히 `shortTermMarkdown`, `longTermMarkdown`, `disclaimerMarkdown`, `checklist` 4개여야 합니다. 다른 이름 사용 금지.
+
+**CRITICAL**: `shortTermMarkdown`과 `longTermMarkdown`은 서로 다른 내용이어야 합니다. 동일한 문단을 두 필드에 반복하면 계약 위반입니다.
 
 ## 작전주 6개 항목
 

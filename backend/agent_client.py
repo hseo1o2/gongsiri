@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import time
 from typing import Any
 from urllib.parse import urljoin
 
@@ -8,6 +9,17 @@ import requests
 
 DEFAULT_AGENT_SERVICE_URL = "http://127.0.0.1:8787"
 DEFAULT_TIMEOUT_SECONDS = 120.0
+
+_TRACE_ENABLED = os.getenv("GONGSIRI_TRACE_STDOUT", "true").lower() not in ("0", "false", "off")
+
+
+def stdout_trace(tag: str, msg: str) -> None:
+    if _TRACE_ENABLED:
+        print(f"[{tag}] {msg}", flush=True)
+
+
+# internal alias
+_trace = stdout_trace
 
 
 class AgentServiceError(RuntimeError):
@@ -57,6 +69,8 @@ class AgentServiceClient:
 
     def _post_json(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
         url = urljoin(f"{self.base_url}/", path.lstrip("/"))
+        _trace("reports", f"→ agent POST {url}")
+        _t0 = time.monotonic()
         try:
             response = requests.post(url, json=payload, timeout=self.timeout)
         except requests.RequestException as exc:
@@ -67,9 +81,13 @@ class AgentServiceClient:
                 evidence=[{"source": "agent_http", "url": self.base_url, "path": path}],
             ) from exc
 
+        _elapsed = time.monotonic() - _t0
         try:
             body = response.json()
         except ValueError as exc:
+            _trace(
+                "reports", f"← agent {response.status_code} malformed_json elapsed={_elapsed:.1f}s"
+            )
             raise AgentServiceError(
                 "agent_malformed_response",
                 "저 공시리가 공시리 응답 서비스에서 JSON 응답을 받지 못했습니다.",
@@ -85,6 +103,9 @@ class AgentServiceClient:
             ) from exc
 
         if not isinstance(body, dict):
+            _trace(
+                "reports", f"← agent {response.status_code} malformed_body elapsed={_elapsed:.1f}s"
+            )
             raise AgentServiceError(
                 "agent_malformed_response",
                 "저 공시리가 공시리 응답을 JSON 객체로 해석하지 못했습니다.",
@@ -93,6 +114,7 @@ class AgentServiceClient:
             )
 
         if response.status_code >= 400 or body.get("ok") is False:
+            _trace("reports", f"← agent {response.status_code} ok=false elapsed={_elapsed:.1f}s")
             error = body.get("error") if isinstance(body.get("error"), dict) else {}
             code = str(error.get("code") or "agent_http_error")
             message = str(
@@ -110,4 +132,5 @@ class AgentServiceClient:
                 evidence=evidence,
             )
 
+        _trace("reports", f"← agent {response.status_code} ok=true elapsed={_elapsed:.1f}s")
         return body

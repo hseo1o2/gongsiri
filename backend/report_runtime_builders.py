@@ -27,11 +27,40 @@ from backend.storage.schema import SCHEMA_VERSION
 
 def build_report_list_response(payload: dict[str, Any]) -> dict[str, Any]:
     filtered_corp_codes = set(corp_codes(payload))
-    rows = get_repository_provider().reports.list_latest_for_user(resolve_dev_user_id())
-    if filtered_corp_codes:
-        rows = [row for row in rows if row.get("corp_code") in filtered_corp_codes]
+    user_id = resolve_dev_user_id()
+    provider = get_repository_provider()
 
-    if not rows:
+    report_rows = provider.reports.list_latest_for_user(user_id)
+    if filtered_corp_codes:
+        report_rows = [row for row in report_rows if row.get("corp_code") in filtered_corp_codes]
+
+    # 워치리스트 종목을 함께 조회해서 리포트가 없는 종목도 목록에 포함
+    watchlist_rows = provider.watchlist.list_for_user(user_id)
+    report_corp_codes = {str(row["corp_code"]) for row in report_rows}
+
+    reports = [summary_view(row) for row in report_rows]
+
+    for wl_row in watchlist_rows:
+        corp_code = str(wl_row.get("corp_code") or "")
+        if not corp_code:
+            continue
+        if filtered_corp_codes and corp_code not in filtered_corp_codes:
+            continue
+        if corp_code in report_corp_codes:
+            continue
+        # 리포트가 없는 워치리스트 종목 — hasReport=False 로 표시
+        reports.append(
+            {
+                "corpCode": corp_code,
+                "corpName": str(wl_row.get("corp_name") or corp_code),
+                "analyzedAt": "",
+                "riskLevel": "normal",
+                "riskScore": 0,
+                "hasReport": False,
+            }
+        )
+
+    if not reports:
         return {
             "view": "report-list",
             "reports": [],
@@ -40,7 +69,7 @@ def build_report_list_response(payload: dict[str, Any]) -> dict[str, Any]:
 
     return {
         "view": "report-list",
-        "reports": [summary_view(row) for row in rows],
+        "reports": reports,
         "fallback": {"used": False},
     }
 
@@ -189,7 +218,7 @@ def save_agent_path_report(
         "corp_name": corp_name,
         "risk_level": safe_risk_level,
         "risk_score": int(guard.get("riskScore") or 0),
-        "checklist": checklist_storage([]),
+        "checklist": checklist_storage(guard.get("checklist") or []),
         "short_term_report": str(
             report.get("shortTermMarkdown") or report.get("shortTermReport") or ""
         ),

@@ -93,13 +93,24 @@ test("parseModeResult returns structured checklist explanation payload", () => {
   );
 });
 
-test("parseModeResult rejects malformed non-json mode output", () => {
+test("parseModeResult wraps plain-text qa response as answerMarkdown (free-form contract)", () => {
+  // docs/07: "QA 출력: JSON 강제 없음 — 자연어 한국어 답변"
+  // Solar/Pi가 plain text를 반환하면 answerMarkdown으로 wrapping해 처리한다.
+  const parsed = parseModeResult("qa", "안녕하세요, 저 공시리입니다.", {
+    ...baseRequest,
+    mode: "qa",
+    question: "안녕",
+  });
+  assert.equal(parsed.data.qa.answerMarkdown, "안녕하세요, 저 공시리입니다.");
+  assert.equal(parsed.markdown, "안녕하세요, 저 공시리입니다.");
+});
+
+test("parseModeResult rejects malformed non-json output for non-qa modes", () => {
   assert.throws(
     () =>
-      parseModeResult("qa", "not-json", {
+      parseModeResult("report", "not-json", {
         ...baseRequest,
-        mode: "qa",
-        question: "질문",
+        mode: "report",
       }),
     /JSON/,
   );

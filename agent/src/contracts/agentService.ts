@@ -12,6 +12,7 @@ export type AgentAnalysisGuard = {
   riskScore: number;
   riskLevel: AnalysisResultPayload["risk_level"];
   checklistIds: string[];
+  checklist: unknown[];
 };
 
 type AgentRequestBase = {

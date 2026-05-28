@@ -6,7 +6,7 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
 
-from backend.agent_client import AgentServiceError
+from backend.agent_client import AgentServiceError, stdout_trace
 from backend.agent_service import agent_failure_envelope
 from backend.analyzer.pipeline import CONTRACT_VERSION
 from backend.auth.dev_session import require_dev_auth_mode
@@ -27,6 +27,10 @@ async def create_report_response(request: Request) -> JSONResponse:
     try:
         payload, _empty_body = await read_json_object(request)
         view = resolve_report_view(payload)
+        corp = str(payload.get("corpCode") or payload.get("corp_code") or "-")
+        mode = str(payload.get("mode") or "report")
+        cache = "hit" if payload.get("cached") else "miss"
+        stdout_trace("reports", f"view={view} corp={corp} mode={mode} cache={cache}")
         if view == "report-list":
             response = build_report_list_response(payload)
         elif view == "manual-check":
