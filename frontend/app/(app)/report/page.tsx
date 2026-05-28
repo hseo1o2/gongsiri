@@ -87,7 +87,8 @@ export default async function ReportListPage() {
           ) : (
             reportSummaries.map((r, i) => {
               const hasReport = r.hasReport !== false;
-              return hasReport ? (
+              const isLast = i === reportSummaries.length - 1;
+              return (
                 <Link
                   key={r.corpCode}
                   href={`/report/${r.corpCode}`}
@@ -96,14 +97,14 @@ export default async function ReportListPage() {
                   <div
                     style={{
                       padding: "14px 16px",
-                      borderBottom:
-                        i < reportSummaries.length - 1
-                          ? "0.5px solid var(--color-border-tertiary)"
-                          : "none",
+                      borderBottom: isLast
+                        ? "none"
+                        : "0.5px solid var(--color-border-tertiary)",
                       display: "flex",
                       alignItems: "center",
                       gap: 12,
                       cursor: "pointer",
+                      opacity: hasReport ? 1 : 0.75,
                     }}
                   >
                     <div style={{ flex: 1 }}>
@@ -116,87 +117,62 @@ export default async function ReportListPage() {
                       >
                         {r.corpName}
                       </p>
-                      <p
-                        className="font-mono"
-                        style={{
-                          fontSize: 10,
-                          color: "var(--color-text-tertiary)",
-                          marginTop: 2,
-                        }}
-                      >
-                        {r.analyzedAt} 분석
-                      </p>
+                      {hasReport ? (
+                        <p
+                          className="font-mono"
+                          style={{
+                            fontSize: 10,
+                            color: "var(--color-text-tertiary)",
+                            marginTop: 2,
+                          }}
+                        >
+                          {r.analyzedAt} 분석
+                        </p>
+                      ) : (
+                        <p
+                          style={{
+                            fontSize: 10,
+                            color: "var(--color-text-tertiary)",
+                            marginTop: 2,
+                            letterSpacing: "-0.02em",
+                          }}
+                        >
+                          리포트 미생성
+                        </p>
+                      )}
                     </div>
-                    <RiskBadge level={r.riskLevel} size="sm" />
-                    <p
-                      className="font-mono"
-                      style={{
-                        fontSize: 12,
-                        color: "var(--color-text-tertiary)",
-                        minWidth: 32,
-                        textAlign: "right",
-                      }}
-                    >
-                      {r.riskScore}/6
-                    </p>
-                  </div>
-                </Link>
-              ) : (
-                <Link
-                  key={r.corpCode}
-                  href={`/report/${r.corpCode}`}
-                  style={{ textDecoration: "none", color: "inherit" }}
-                >
-                  <div
-                    style={{
-                      padding: "14px 16px",
-                      borderBottom:
-                        i < reportSummaries.length - 1
-                          ? "0.5px solid var(--color-border-tertiary)"
-                          : "none",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 12,
-                      cursor: "pointer",
-                      opacity: 0.75,
-                    }}
-                  >
-                    <div style={{ flex: 1 }}>
-                      <p
+                    {hasReport ? (
+                      <>
+                        <RiskBadge level={r.riskLevel} size="sm" />
+                        <p
+                          className="font-mono"
+                          style={{
+                            fontSize: 12,
+                            color: "var(--color-text-tertiary)",
+                            minWidth: 32,
+                            textAlign: "right",
+                          }}
+                        >
+                          {r.riskScore}/6
+                        </p>
+                      </>
+                    ) : (
+                      <span
                         style={{
-                          fontSize: 14,
+                          fontSize: 11,
                           fontWeight: 500,
-                          letterSpacing: "-0.03em",
-                        }}
-                      >
-                        {r.corpName}
-                      </p>
-                      <p
-                        style={{
-                          fontSize: 10,
-                          color: "var(--color-text-tertiary)",
-                          marginTop: 2,
+                          color: "#185FA5",
+                          background: "#E6F1FB",
+                          border: "0.5px solid #3B8BFF",
+                          borderRadius: 6,
+                          padding: "3px 10px",
                           letterSpacing: "-0.02em",
+                          whiteSpace: "nowrap",
                         }}
                       >
-                        리포트 미생성
-                      </p>
-                    </div>
-                    <span
-                      style={{
-                        fontSize: 11,
-                        fontWeight: 500,
-                        color: "#185FA5",
-                        background: "#E6F1FB",
-                        border: "0.5px solid #3B8BFF",
-                        borderRadius: 6,
-                        padding: "3px 10px",
-                        letterSpacing: "-0.02em",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      리포트 생성
-                    </span>
+                        리포트 생성
+                      </span>
+                    )}
                   </div>
                 </Link>
               );

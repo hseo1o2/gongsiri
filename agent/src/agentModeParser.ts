@@ -108,17 +108,15 @@ export const parseModeResult = (
     if (!isObject(parsed)) {
       parsed = { answerMarkdown: rawText.trim() };
     }
-    const warnings = stringArray((parsed as Record<string, unknown>).warnings);
-    const parsedChecklist = Array.isArray(
-      (parsed as Record<string, unknown>).checklist,
-    )
-      ? ((parsed as Record<string, unknown>).checklist as unknown[])
+    const p = parsed as Record<string, unknown>;
+    const warnings = stringArray(p.warnings);
+    const parsedChecklist = Array.isArray(p.checklist)
+      ? (p.checklist as unknown[])
       : undefined;
     const analysisGuard = analysisGuardFrom(request, parsedChecklist);
-    const answerMarkdown = requireString(
-      (parsed as Record<string, unknown>).answerMarkdown,
-      { fieldName: "answerMarkdown" },
-    );
+    const answerMarkdown = requireString(p.answerMarkdown, {
+      fieldName: "answerMarkdown",
+    });
     return {
       markdown: answerMarkdown,
       warnings,

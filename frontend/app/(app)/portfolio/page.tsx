@@ -5,6 +5,18 @@ import RiskBadge from "@/components/ui/RiskBadge";
 import AddStockModal from "@/app/(app)/watchlist/_components/AddStockModal";
 import type { PortfolioItem, RiskLevel } from "@/lib/types";
 
+const RISK_BAR_COLOR: Record<RiskLevel, string> = {
+  high: "#E24B4A",
+  caution: "#BA7517",
+  normal: "#639922",
+};
+
+function toRiskLevel(score: number): RiskLevel {
+  if (score >= 4) return "high";
+  if (score >= 2) return "caution";
+  return "normal";
+}
+
 const MOCK: PortfolioItem[] = [
   {
     corp_code: "00258801",
@@ -39,8 +51,7 @@ export default function PortfolioPage() {
     return sum + (i.risk_score ?? 0) * weight;
   }, 0);
 
-  const overallLevel: RiskLevel =
-    weightedScore >= 4 ? "high" : weightedScore >= 2 ? "caution" : "normal";
+  const overallLevel = toRiskLevel(weightedScore);
 
   return (
     <div>
@@ -110,12 +121,7 @@ export default function PortfolioPage() {
               style={{
                 height: "100%",
                 width: `${(weightedScore / 6) * 100}%`,
-                background:
-                  overallLevel === "high"
-                    ? "#E24B4A"
-                    : overallLevel === "caution"
-                      ? "#BA7517"
-                      : "#639922",
+                background: RISK_BAR_COLOR[overallLevel],
                 borderRadius: 100,
               }}
             />

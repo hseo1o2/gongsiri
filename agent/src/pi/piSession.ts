@@ -185,34 +185,22 @@ export const runPiSession = async (
   });
   await loader.reload();
 
+  const baseOptions = {
+    model,
+    thinkingLevel: "high" as const,
+    authStorage: registry.authStorage,
+    modelRegistry: registry,
+    resourceLoader: loader,
+    sessionManager: SessionManager.inMemory(),
+    settingsManager: SettingsManager.inMemory({
+      compaction: { enabled: false },
+      retry: { enabled: true, maxRetries: 1 },
+    }),
+  };
   const sessionOptions =
     tools.length > 0
-      ? {
-          model,
-          thinkingLevel: "high" as const,
-          authStorage: registry.authStorage,
-          modelRegistry: registry,
-          resourceLoader: loader,
-          sessionManager: SessionManager.inMemory(),
-          settingsManager: SettingsManager.inMemory({
-            compaction: { enabled: false },
-            retry: { enabled: true, maxRetries: 1 },
-          }),
-          customTools: tools,
-        }
-      : {
-          model,
-          thinkingLevel: "high" as const,
-          authStorage: registry.authStorage,
-          modelRegistry: registry,
-          resourceLoader: loader,
-          sessionManager: SessionManager.inMemory(),
-          settingsManager: SettingsManager.inMemory({
-            compaction: { enabled: false },
-            retry: { enabled: true, maxRetries: 1 },
-          }),
-          noTools: "all" as const,
-        };
+      ? { ...baseOptions, customTools: tools }
+      : { ...baseOptions, noTools: "all" as const };
 
   const { session } = await createAgentSession(sessionOptions);
 
@@ -223,10 +211,9 @@ export const runPiSession = async (
   const toolTraces: TraceLogEntry[] = [];
   const abortController = new AbortController();
 
+  const traceVal = (process.env.GONGSIRI_TRACE_STDOUT ?? "true").toLowerCase();
   const traceEnabled =
-    (process.env.GONGSIRI_TRACE_STDOUT ?? "true").toLowerCase() !== "0" &&
-    (process.env.GONGSIRI_TRACE_STDOUT ?? "true").toLowerCase() !== "false" &&
-    (process.env.GONGSIRI_TRACE_STDOUT ?? "true").toLowerCase() !== "off";
+    traceVal !== "0" && traceVal !== "false" && traceVal !== "off";
   const tracePrefix = `pi:${promptCtx?.mode ?? "run"}:${(promptCtx?.traceId ?? "--------").slice(0, 8)}`;
   const traceLog = (msg: string) => {
     if (traceEnabled) console.log(`[${tracePrefix}] ${msg}`);
